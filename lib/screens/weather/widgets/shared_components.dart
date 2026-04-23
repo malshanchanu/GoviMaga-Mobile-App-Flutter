@@ -5,12 +5,14 @@ class SectionHeader extends StatelessWidget {
   final String title;
   final IconData icon;
   final Color iconColor;
+  final String? language; // Optional for backward compatibility
 
   const SectionHeader({
     super.key,
     required this.title,
     required this.icon,
     required this.iconColor,
+    this.language,
   });
 
   @override
@@ -29,8 +31,7 @@ class SectionHeader extends StatelessWidget {
               ],
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-                color: iconColor.withValues(alpha: 0.25), width: 1),
+            border: Border.all(color: iconColor.withValues(alpha: 0.25), width: 1),
           ),
           child: Icon(icon, color: iconColor, size: 17),
         ),
@@ -82,6 +83,40 @@ class CardContainer extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+// Optional: Add a localized version of SectionHeader if needed
+class LocalizedSectionHeader extends StatelessWidget {
+  final String titleKey;
+  final IconData icon;
+  final Color iconColor;
+  final String language;
+  final Map<String, Map<String, String>> translations;
+
+  const LocalizedSectionHeader({
+    super.key,
+    required this.titleKey,
+    required this.icon,
+    required this.iconColor,
+    required this.language,
+    required this.translations,
+  });
+
+  String _getTranslatedTitle() {
+    return translations[language]?[titleKey] ??
+        translations['EN']?[titleKey] ??
+        titleKey;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SectionHeader(
+      title: _getTranslatedTitle(),
+      icon: icon,
+      iconColor: iconColor,
+      language: language,
     );
   }
 }

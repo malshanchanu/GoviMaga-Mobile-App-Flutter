@@ -1,0 +1,81 @@
+mutation CreateSeedData @transaction @auth(level: PUBLIC, insecureReason: "This is seed data creation and should be publicly accessible for initial setup.") {
+  user1: user_insert(data: {
+    id: "550e8400-e29b-41d4-a716-446655440000",
+    displayName: "Alice Farmer",
+    region: "North",
+    mainCrop: "Corn",
+    createdAt: "2023-01-01T10:00:00Z",
+    email: "alice@example.com",
+    phoneNumber: "123-456-7890",
+    profilePictureUrl: "https://example.com/alice.jpg"
+  })
+  user2: user_insert(data: {
+    id: "550e8400-e29b-41d4-a716-446655440001",
+    displayName: "Bob Gardener",
+    region: "South",
+    mainCrop: "Tomatoes",
+    createdAt: "2023-01-02T11:00:00Z",
+    email: "bob@example.com",
+    phoneNumber: "987-654-3210",
+    profilePictureUrl: "https://example.com/bob.jpg"
+  })
+  crop1: crop_insert(data: {
+    id: "6a2f7c0a-8e3b-4c1d-9f5e-2b1a0e8d7c6f",
+    name: "Corn",
+    cultivationGuide: "Plant in warm soil, full sun. Water regularly.",
+    createdAt: "2023-01-05T09:30:00Z",
+    idealTemperatureRange: "20-30°C",
+    soilType: "Loamy"
+  })
+  crop2: crop_insert(data: {
+    id: "7b3g8d1b-9f4c-5d2e-0a6f-3c2b1f9e8d7c",
+    name: "Tomatoes",
+    cultivationGuide: "Require staking, consistent watering, and rich soil.",
+    createdAt: "2023-01-06T10:00:00Z",
+    idealTemperatureRange: "21-29°C",
+    soilType: "Well-drained"
+  })
+  cultivationCycle1: cultivationCycle_insert(data: {
+    id: "8c4h9e2c-0a5d-6e3f-1b7g-4d3c2g0f9e8d",
+    cropName: "Corn",
+    plantingDate: "2023-03-15",
+    expectedHarvestDate: "2023-07-20",
+    status: "Growing",
+    farmerId: "550e8400-e29b-41d4-a716-446655440000",
+    cropId: "6a2f7c0a-8e3b-4c1d-9f5e-2b1a0e8d7c6f"
+  })
+  marketPrice1: marketPrice_insert(data: {
+    id: "9d5i0f3d-1b6e-7f4g-2c8h-5e4d3h1g0f9e",
+    cropName: "Corn",
+    pricePerKg: 0.75,
+    unit: "KG",
+    marketLocation: "Central Market",
+    recordedAt: "2023-07-10T14:00:00Z",
+    cropId: "6a2f7c0a-8e3b-4c1d-9f5e-2b1a0e8d7c6f"
+  })
+  forumPost1: forumPost_insert(data: {
+    id: "a1e0b0c0-d1e1-f1a1-b1c1-d1e1f1a1b1c1",
+    title: "Best practices for corn cultivation",
+    content: "Sharing my tips for a successful corn harvest this year.",
+    createdAt: "2023-02-01T15:00:00Z",
+    imageUrl: "https://example.com/corn_field.jpg",
+    authorId: "550e8400-e29b-41d4-a716-446655440000"
+  })
+  forumComment1: forumComment_insert(data: {
+    id: "b2f1d1e1-c2a2-g2b2-d2e2-f2a2g2b2d2e2",
+    content: "Great tips, Alice! I'll try these on my next crop.",
+    createdAt: "2023-02-01T16:00:00Z",
+    authorId: "550e8400-e29b-41d4-a716-446655440001",
+    postId: "a1e0b0c0-d1e1-f1a1-b1c1-d1e1f1a1b1c1"
+  })
+  weatherForecast1: weatherForecast_insert(data: {
+    id: "c3g2e2f2-d3b3-h3c3-e3f3-g3b3h3c3e3f3",
+    region: "North",
+    date: "2023-07-20",
+    temperature: 28.5,
+    humidity: 70.2,
+    precipitationChance: 0.3,
+    windSpeed: 15.0,
+    condition: "Partly Cloudy"
+  })
+}

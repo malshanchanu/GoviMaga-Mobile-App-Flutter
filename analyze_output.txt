@@ -1,0 +1,66 @@
+﻿Analyzing GoviMaga-Mobile-App-Flutter...                        
+
+  error - Target of URI doesn't exist: 'screens/forum/forum_placeholder.dart' - lib\farmer_home_page.dart:9:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: 'screens/market/market_placeholder.dart' - lib\farmer_home_page.dart:10:8 - uri_does_not_exist
+  error - The method 'MarketHome' isn't defined for the type '_FarmerHomePageState' - lib\farmer_home_page.dart:199:7 - undefined_method
+  error - The method 'ForumHome' isn't defined for the type '_FarmerHomePageState' - lib\farmer_home_page.dart:202:7 - undefined_method
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\farmer_home_page.dart:464:34 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\screens\crops\add_crop_screen.dart:183:15 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\screens\crops\add_crop_screen.dart:200:15 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\screens\crops\add_crop_screen.dart:248:35 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\crops\crops_home.dart:202:29 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\crops\crops_home.dart:329:33 - deprecated_member_use
+   info - The private field _hasCameraPermission could be 'final' - lib\screens\diagnose\diagnose_home.dart:32:8 - prefer_final_fields
+warning - The value of the field '_hasCameraPermission' isn't used - lib\screens\diagnose\diagnose_home.dart:32:8 - unused_field
+   info - Don't invoke 'print' in production code - lib\screens\diagnose\diagnose_home.dart:139:9 - avoid_print
+warning - The value of the local variable 'imageBase64' isn't used - lib\screens\diagnose\diagnose_home.dart:229:13 - unused_local_variable
+   info - The 'child' argument should be last in widget constructor invocations - lib\screens\diagnose\diagnose_home.dart:474:33 - sort_child_properties_last
+   info - The 'child' argument should be last in widget constructor invocations - lib\screens\diagnose\diagnose_home.dart:500:33 - sort_child_properties_last
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\diagnose\diagnose_home.dart:571:35 - deprecated_member_use
+  error - Target of URI doesn't exist: 'package:cloud_firestore/firebase_core.dart' - lib\screens\forum\forum_home.dart:2:8 - uri_does_not_exist
+  error - Undefined name 'Firebase' - lib\screens\forum\forum_home.dart:55:11 - undefined_identifier
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\forum\forum_home.dart:462:46 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\forum\forum_home.dart:547:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\forum\forum_home.dart:569:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\forum\forum_home.dart:598:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\forum\forum_home.dart:883:40 - deprecated_member_use
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\screens\forum\forum_home.dart:919:17 - deprecated_member_use
+  error - Target of URI doesn't exist: 'package:cloud_firestore/firebase_core.dart' - lib\screens\market\market_home.dart:2:8 - uri_does_not_exist
+  error - Undefined name 'Firebase' - lib\screens\market\market_home.dart:69:11 - undefined_identifier
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\screens\market\market_home.dart:269:17 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\market\market_home.dart:443:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\market\market_home.dart:468:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\market\market_home.dart:498:47 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\market\market_home.dart:783:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\farming_alerts_section.dart:177:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\farming_alerts_section.dart:179:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\farming_alerts_section.dart:195:38 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\farming_alerts_section.dart:198:40 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\forecast_section.dart:95:50 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\forecast_section.dart:101:42 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\forecast_section.dart:147:49 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\forecast_section.dart:163:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\forecast_section.dart:185:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\forecast_section.dart:186:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\forecast_section.dart:193:48 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\forecast_section.dart:199:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\hero_weather_card.dart:166:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\hero_weather_card.dart:288:30 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\hero_weather_card.dart:288:55 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\hero_weather_card.dart:291:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\hero_weather_card.dart:308:42 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\recommendations_section.dart:255:44 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\recommendations_section.dart:260:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\recommendations_section.dart:270:41 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\recommendations_section.dart:273:43 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\shared_components.dart:29:27 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\shared_components.dart:30:27 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\shared_components.dart:34:49 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\shared_components.dart:54:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\weather_screen.dart:307:37 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\weather_screen.dart:318:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\weather_screen.dart:350:35 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\weather_screen.dart:391:45 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\weather\widgets\weather_screen.dart:461:45 - deprecated_member_use
+  error - The name 'MyApp' isn't a class - test\widget_test.dart:16:35 - creation_with_non_type
+

@@ -12,7 +12,8 @@ import 'farming_alerts_section.dart';
 import 'forecast_section.dart';
 
 class WeatherScreen extends StatefulWidget {
-  const WeatherScreen({super.key});
+  final String language;
+  const WeatherScreen({super.key, required this.language});
 
   @override
   State<WeatherScreen> createState() => _WeatherScreenState();
@@ -37,6 +38,31 @@ class _WeatherScreenState extends State<WeatherScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  // Localization method
+  String _t(String key) {
+    final Map<String, Map<String, String>> translations = {
+      'EN': {
+        'fetching_data': 'Fetching your farm data...',
+        'weather_advisory': 'Weather-Driven Crop Advisory',
+        'refresh': 'Refresh',
+        'loading': 'Loading...',
+      },
+      'SI': {
+        'fetching_data': 'ඔබේ ගොවිපල දත්ත ලබා ගනිමින්...',
+        'weather_advisory': 'කාලගුණය මත පදනම් වූ බෝග උපදෙස්',
+        'refresh': 'නැවත ලබා ගන්න',
+        'loading': 'පූරණය වෙමින්...',
+      },
+      'TA': {
+        'fetching_data': 'உங்கள் பண்ணை தரவைப் பெறுகிறது...',
+        'weather_advisory': 'வானிலை சார்ந்த பயிர் ஆலோசனை',
+        'refresh': 'புதுப்பிக்கவும்',
+        'loading': 'ஏற்றுகிறது...',
+      },
+    };
+    return translations[widget.language]?[key] ?? translations['EN']![key]!;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -55,8 +81,7 @@ class _WeatherScreenState extends State<WeatherScreen>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.06),
       end: Offset.zero,
-    ).animate(
-        CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
+    ).animate(CurvedAnimation(parent: _slideController, curve: Curves.easeOut));
 
     _getWeatherByLocation();
     _setupPushNotifications();
@@ -110,20 +135,40 @@ class _WeatherScreenState extends State<WeatherScreen>
   }
 
   Future<void> _getWeatherByLocation() async {
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+      currentCity = "Locating...";
+      temperature = "--";
+      humidity = "--";
+      windSpeed = "--";
+      rainfall = "0.0";
+      weatherDescription = "";
+      forecastList = [];
+    });
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) throw Exception('Location services are disabled.');
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enable location services.')));
+        }
+        throw Exception('Location services are disabled.');
+      }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions denied.')));
+          }
           throw Exception('Location permissions are denied');
         }
       }
       if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions permanently denied. Enable in settings.')));
+        }
         throw Exception('Location permissions are permanently denied.');
       }
 
@@ -176,8 +221,7 @@ class _WeatherScreenState extends State<WeatherScreen>
 
         setState(() {
           currentCity = currentData['name']?.toString() ?? "Unknown City";
-          temperature =
-              (currentData['main']?['temp'] ?? 0).round().toString();
+          temperature = (currentData['main']?['temp'] ?? 0).round().toString();
           humidity = (currentData['main']?['humidity'] ?? 0).toString();
           windSpeed = ((currentData['wind']?['speed'] ?? 0) * 3.6)
               .round()
@@ -206,61 +250,137 @@ class _WeatherScreenState extends State<WeatherScreen>
 
   @override
   Widget build(BuildContext context) {
-    // ✅ SizedBox.expand() — Scaffold body space සම්පූර්ණයෙන් fill කරනවා
     return SizedBox.expand(
       child: isLoading
           ? _buildLoader()
           : FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              _buildAppBar(),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      _buildLocationPill(),
-                      const SizedBox(height: 24),
-                      HeroWeatherCard(
-                        temperature: temperature,
-                        humidity: humidity,
-                        windSpeed: windSpeed,
-                        rainfall: rainfall,
-                        description: weatherDescription,
+              opacity: _fadeAnimation,
+              child: SlideTransition(
+                position: _slideAnimation,
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    // Removed AppBar, using SliverToBoxAdapter for top spacing
+                    SliverToBoxAdapter(child: SizedBox(height: 12)),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                        child: Column(
+                          children: [
+                            _buildHeader(),
+                            const SizedBox(height: 16),
+                            _buildLocationPill(),
+                            const SizedBox(height: 24),
+                            HeroWeatherCard(
+                              temperature: temperature,
+                              humidity: humidity,
+                              windSpeed: windSpeed,
+                              rainfall: rainfall,
+                              description: weatherDescription,
+                              language: widget.language,
+                            ),
+                            const SizedBox(height: 20),
+                            TodaysRecommendationsSection(
+                              temperature: temperature,
+                              humidity: humidity,
+                              windSpeed: windSpeed,
+                              language: widget.language,
+                            ),
+                            const SizedBox(height: 18),
+                            FarmingAlertsSection(
+                              temperature: temperature,
+                              humidity: humidity,
+                              windSpeed: windSpeed,
+                              forecastData: forecastList,
+                              language: widget.language,
+                            ),
+                            const SizedBox(height: 18),
+                            Forecast5DaySection(
+                              forecastData: forecastList,
+                              language: widget.language,
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 20),
-                      TodaysRecommendationsSection(
-                        temperature: temperature,
-                        humidity: humidity,
-                        windSpeed: windSpeed,
-                      ),
-                      const SizedBox(height: 18),
-                      FarmingAlertsSection(
-                        temperature: temperature,
-                        humidity: humidity,
-                        windSpeed: windSpeed,
-                        forecastData: forecastList,
-                      ),
-                      const SizedBox(height: 18),
-                      Forecast5DaySection(forecastData: forecastList),
-                      const SizedBox(height: 12),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [AppColors.accentDeep, AppColors.accent],
         ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.accent.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.eco_rounded, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Govi Maga',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  _t('weather_advisory'),
+                  style: const TextStyle(
+                    color: Color(0xCCFFFFFF),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(
+              Icons.notifications_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  // ✅ Fixed: width/height double.infinity දුන්නා — සම්පූර්ණ screen fill වෙනවා
   Widget _buildLoader() {
     return Container(
       width: double.infinity,
@@ -302,9 +422,9 @@ class _WeatherScreenState extends State<WeatherScreen>
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Fetching your farm data...',
-              style: TextStyle(
+            Text(
+              _t('fetching_data'),
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
@@ -323,131 +443,6 @@ class _WeatherScreenState extends State<WeatherScreen>
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  SliverAppBar _buildAppBar() {
-    return SliverAppBar(
-      backgroundColor: AppColors.accentDeep,
-      expandedHeight: 108,
-      pinned: true,
-      elevation: 0,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              stops: [0.0, 0.5, 1.0],
-              colors: [
-                AppColors.accentDeep,
-                AppColors.gradientMid,
-                AppColors.accent,
-              ],
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned(
-                right: -20,
-                top: -20,
-                child: Container(
-                  width: 100,
-                  height: 100,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.06),
-                  ),
-                ),
-              ),
-              Positioned(
-                right: 30,
-                bottom: 10,
-                child: Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.white.withValues(alpha: 0.05),
-                  ),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 54, 20, 16),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Icon(
-                            Icons.eco_rounded,
-                            color: AppColors.accentHero,
-                            size: 20,
-                          ),
-                          SizedBox(width: 7),
-                          Text(
-                            'Govi Maga',
-                            style: TextStyle(
-                              color: AppColors.textOnGreen,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0.6,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: const [
-                          Text(
-                            'Weather-Driven Crop Advisory',
-                            style: TextStyle(
-                              color: Color(0xCCFFFFFF),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(
-                        Icons.notifications_rounded,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -514,16 +509,16 @@ class _WeatherScreenState extends State<WeatherScreen>
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
-                children: const [
-                  Icon(
+                children: [
+                  const Icon(
                     Icons.refresh_rounded,
                     color: AppColors.textSecondary,
                     size: 13,
                   ),
-                  SizedBox(width: 4),
+                  const SizedBox(width: 4),
                   Text(
-                    'Refresh',
-                    style: TextStyle(
+                    _t('refresh'),
+                    style: const TextStyle(
                       color: AppColors.textSecondary,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,

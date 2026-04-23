@@ -3,7 +3,12 @@ import 'package:intl/intl.dart';
 import '../theme/app_colors.dart';
 
 class HeroWeatherCard extends StatelessWidget {
-  final String temperature, humidity, windSpeed, rainfall, description;
+  final String temperature;
+  final String humidity;
+  final String windSpeed;
+  final String rainfall;
+  final String description;
+  final String language;
 
   const HeroWeatherCard({
     super.key,
@@ -12,7 +17,32 @@ class HeroWeatherCard extends StatelessWidget {
     required this.windSpeed,
     required this.rainfall,
     required this.description,
+    required this.language,
   });
+
+  String _t(String key) {
+    final Map<String, Map<String, String>> translations = {
+      'EN': {
+        'humidity': 'Humidity',
+        'wind': 'Wind',
+        'rainfall': 'Rainfall',
+        'current_weather': 'Current Weather',
+      },
+      'SI': {
+        'humidity': 'ආර්ද්‍රතාව',
+        'wind': 'සුළඟ',
+        'rainfall': 'වර්ෂාපතනය',
+        'current_weather': 'වර්තමාන කාලගුණය',
+      },
+      'TA': {
+        'humidity': 'ஈரப்பதம்',
+        'wind': 'காற்று',
+        'rainfall': 'மழைவீழ்ச்சி',
+        'current_weather': 'தற்போதைய வானிலை',
+      },
+    };
+    return translations[language]?[key] ?? translations['EN']![key]!;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +133,7 @@ class HeroWeatherCard extends StatelessWidget {
                           ),
                           child: Text(
                             description.isEmpty
-                                ? 'Current Weather'
+                                ? _t('current_weather')
                                 : description,
                             style: const TextStyle(
                               color: AppColors.textSecondary,
@@ -194,8 +224,9 @@ class HeroWeatherCard extends StatelessWidget {
                       child: _StatItem(
                         icon: Icons.water_drop_outlined,
                         value: '$humidity%',
-                        label: 'Humidity',
+                        label: _t('humidity'),
                         color: AppColors.coolBlue,
+                        language: language,
                       ),
                     ),
                     Container(width: 1, height: 44, color: AppColors.divider),
@@ -203,8 +234,9 @@ class HeroWeatherCard extends StatelessWidget {
                       child: _StatItem(
                         icon: Icons.air_rounded,
                         value: '$windSpeed km/h',
-                        label: 'Wind',
+                        label: _t('wind'),
                         color: AppColors.textSecondary,
+                        language: language,
                       ),
                     ),
                     Container(width: 1, height: 44, color: AppColors.divider),
@@ -212,8 +244,9 @@ class HeroWeatherCard extends StatelessWidget {
                       child: _StatItem(
                         icon: Icons.grain_rounded,
                         value: '$rainfall mm',
-                        label: 'Rainfall',
+                        label: _t('rainfall'),
                         color: AppColors.accent,
+                        language: language,
                       ),
                     ),
                   ],
@@ -232,12 +265,14 @@ class _StatItem extends StatelessWidget {
   final String value;
   final String label;
   final Color color;
+  final String language;
 
   const _StatItem({
     required this.icon,
     required this.value,
     required this.label,
     required this.color,
+    required this.language,
   });
 
   @override
@@ -250,10 +285,7 @@ class _StatItem extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                color.withValues(alpha: 0.12),
-                color.withValues(alpha: 0.06),
-              ],
+              colors: [color.withValues(alpha: 0.12), color.withValues(alpha: 0.06)],
             ),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: color.withValues(alpha: 0.2), width: 1),

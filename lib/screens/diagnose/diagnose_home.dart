@@ -1,42 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import '../../services/diagnosis_service.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class DiagnoseHome extends StatelessWidget {
+  final String language;
+  const DiagnoseHome({super.key, required this.language});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'AgriMate Sri Lanka',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green[700]!,
-          primary: Colors.green[700],
-        ),
-        fontFamily: 'Roboto',
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.green[700],
-          foregroundColor: Colors.white,
-          elevation: 0,
-        ),
-      ),
-      home: DiseaseDiagnosisScreen(),
-    );
+    return DiseaseDiagnosisScreen(language: language);
   }
 }
 
 class DiseaseDiagnosisScreen extends StatefulWidget {
+  final String language;
+  const DiseaseDiagnosisScreen({super.key, required this.language});
+
   @override
-  _DiseaseDiagnosisScreenState createState() => _DiseaseDiagnosisScreenState();
+  State<DiseaseDiagnosisScreen> createState() => _DiseaseDiagnosisScreenState();
 }
 
 class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
@@ -44,192 +31,381 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
   Map<String, dynamic>? _diagnosisData;
   List<Map<String, dynamic>> _recentDiagnoses = [];
   bool _isLoading = false;
+  bool _isSaving = false;
+  bool _isAuthenticated = false;
 
-  String _currentLang = 'SI';
+  final DiagnosisService _diagnosisService = DiagnosisService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  final Map<String, Map<String, String>> _translations = {
-    'EN': {
-      'appTitle': 'AgriMate Sri Lanka',
-      'takePhotoInfo': 'Take or Upload Photo',
-      'chooseBtn': 'Choose Image',
-      'diagnoseBtn': 'Diagnose Disease',
-      'cancelBtn': 'Cancel',
-      'analyzing': 'Analyzing disease...',
-      'confidence': 'Confidence',
-      'treatment': 'Recommended Treatment',
-      'prevention': 'Future Prevention',
-      'unknown': 'Unknown Disease',
-      'recentDiagnoses': 'Recent Diagnoses',
-      'justNow': 'Just now',
-      'minsAgo': 'mins ago',
-      'hoursAgo': 'hours ago',
-      'daysAgo': 'days ago',
-      'weeksAgo': 'weeks ago',
-      'navHome': 'Home',
-      'navDiagnose': 'Diagnose',
-      'navMarket': 'Market',
-      'navCrops': 'Crops',
-      'navWeather': 'Weather',
-      'navForum': 'Forum',
-      'navProfile': 'Profile',
-    },
-    'SI': {
-      'appTitle': 'AgriMate ශ්‍රී ලංකා',
-      'takePhotoInfo': 'පින්තූරයක් ලබා දෙන්න',
-      'chooseBtn': 'පින්තූරය තෝරන්න',
-      'diagnoseBtn': 'රෝගය හඳුනාගන්න',
-      'cancelBtn': 'අවලංගු කරන්න',
-      'analyzing': 'රෝගය විශ්ලේෂණය කරමින් පවතී...',
-      'confidence': 'විශ්වාසනීයත්වය',
-      'treatment': 'නිර්දේශිත ප්‍රතිකාර',
-      'prevention': 'අනාගත ආරක්ෂණ ක්‍රම',
-      'unknown': 'හඳුනා නොගත් රෝගයකි',
-      'recentDiagnoses': 'මෑතකාලීන පරීක්ෂාවන්',
-      'justNow': 'දැන්',
-      'minsAgo': 'මිනිත්තු ගණනකට පෙර',
-      'hoursAgo': 'පැය ගණනකට පෙර',
-      'daysAgo': 'දින ගණනකට පෙර',
-      'weeksAgo': 'සති ගණනකට පෙර',
-      'navHome': 'මුල්පිටුව',
-      'navDiagnose': 'පරීක්ෂාව',
-      'navMarket': 'වෙළඳපොළ',
-      'navCrops': 'බෝග',
-      'navWeather': 'කාලගුණය',
-      'navForum': 'සංසදය',
-      'navProfile': 'ගිණුම',
-    },
-    'TA': {
-      'appTitle': 'AgriMate இலங்கை',
-      'takePhotoInfo': 'புகைப்படம் பதிவேற்றவும்',
-      'chooseBtn': 'படத்தைத் தேர்ந்தெடுக்கவும்',
-      'diagnoseBtn': 'நோயைக் கண்டறியவும்',
-      'cancelBtn': 'ரத்து செய்',
-      'analyzing': 'பகுப்பாய்வு செய்கிறது...',
-      'confidence': 'நம்பிக்கை',
-      'treatment': 'பரிந்துரைக்கப்பட்ட சிகிச்சை',
-      'prevention': 'எதிர்கால தடுப்பு',
-      'unknown': 'அறியப்படாத நோய்',
-      'recentDiagnoses': 'சமீபத்திய நோயறிதல்கள்',
-      'justNow': 'தற்போது',
-      'minsAgo': 'நிமிடங்களுக்கு முன்',
-      'hoursAgo': 'மணிநேரங்களுக்கு முன்',
-      'daysAgo': 'நாட்களுக்கு முன்',
-      'weeksAgo': 'வாரங்களுக்கு முன்',
-      'navHome': 'முகப்பு',
-      'navDiagnose': 'கண்டறிதல்',
-      'navMarket': 'சந்தை',
-      'navCrops': 'பயிர்கள்',
-      'navWeather': 'வானிலை',
-      'navForum': 'மன்றம்',
-      'navProfile': 'சுயவிவரம்',
+  // Get API key from environment
+  String get _apiKey => dotenv.env['GEMINI_API_KEY'] ?? '';
+
+  @override
+  void initState() {
+    super.initState();
+    _isAuthenticated = _auth.currentUser != null;
+    if (_isAuthenticated) {
+      _loadRecentDiagnoses();
     }
-  };
-
-  String _t(String key) {
-    return _translations[_currentLang]?[key] ?? key;
   }
 
-  String _timeAgo(DateTime pastTime) {
-    final difference = DateTime.now().difference(pastTime);
-    if (difference.inDays > 7) {
-      int weeks = (difference.inDays / 7).floor();
-      return _currentLang == 'EN' ? '$weeks ${_t('weeksAgo')}' : '$weeks ${_t('weeksAgo')}';
+  String _t(String key) {
+    final Map<String, Map<String, String>> translations = {
+      'EN': {
+        'title': 'Crop Disease Diagnosis',
+        'subtitle': 'Upload or take a photo of your crop to identify diseases',
+        'takePhotoInfo': 'Take or Upload Photo',
+        'camera': 'Camera',
+        'gallery': 'Gallery',
+        'chooseBtn': 'Choose Image',
+        'diagnoseBtn': 'Diagnose Disease',
+        'cancelBtn': 'Cancel',
+        'analyzing': 'Analyzing disease...',
+        'confidence': 'Confidence',
+        'treatment': 'Recommended Treatment',
+        'prevention': 'Future Prevention',
+        'unknown': 'Unknown Disease',
+        'recentDiagnoses': 'Recent Diagnoses',
+        'error': 'Error analyzing image. Please try again.',
+        'noApiKey': 'API Key not configured. Please contact support.',
+        'noImage': 'Please select an image first',
+        'cropName': 'Crop Name',
+        'diseaseName': 'Disease Name',
+        'severity': 'Severity',
+        'tryAgain': 'Try Again',
+        'clearHistory': 'Clear History',
+        'capturePhoto': 'Take a photo',
+        'chooseFromGallery': 'Choose from gallery',
+        'saving': 'Saving to cloud...',
+        'saved': 'Saved to cloud',
+      },
+      'SI': {
+        'title': 'බෝග රෝග හඳුනාගැනීම',
+        'subtitle': 'රෝග හඳුනා ගැනීම සඳහා ඔබේ බෝගයේ ඡායාරූපයක් උඩුගත කරන්න හෝ ගන්න',
+        'takePhotoInfo': 'පින්තූරයක් ලබා දෙන්න',
+        'camera': 'කැමරාව',
+        'gallery': 'ගැලරිය',
+        'chooseBtn': 'පින්තූරය තෝරන්න',
+        'diagnoseBtn': 'රෝගය හඳුනාගන්න',
+        'cancelBtn': 'අවලංගු කරන්න',
+        'analyzing': 'රෝගය විශ්ලේෂණය කරමින්...',
+        'confidence': 'විශ්වාසනීයත්වය',
+        'treatment': 'නිර්දේශිත ප්‍රතිකාර',
+        'prevention': 'අනාගත ආරක්ෂණ ක්‍රම',
+        'unknown': 'හඳුනා නොගත් රෝගයකි',
+        'recentDiagnoses': 'මෑතකාලීන පරීක්ෂාවන්',
+        'error': 'පින්තූරය විශ්ලේෂණය කිරීමේ දෝෂයකි. නැවත උත්සාහ කරන්න.',
+        'noApiKey': 'API යතුර වින්‍යාස කර නැත. සහාය අමතන්න.',
+        'noImage': 'කරුණාකර පළමුව රූපයක් තෝරන්න',
+        'cropName': 'බෝග නම',
+        'diseaseName': 'රෝගයේ නම',
+        'severity': 'බරපතලකම',
+        'tryAgain': 'නැවත උත්සාහ කරන්න',
+        'clearHistory': 'ඉතිහාසය මකන්න',
+        'capturePhoto': 'ඡායාරූපයක් ගන්න',
+        'chooseFromGallery': 'ගැලරියෙන් තෝරන්න',
+        'saving': 'වලාකුළට සුරකිමින්...',
+        'saved': 'වලාකුළට සුරකින ලදී',
+      },
+      'TA': {
+        'title': 'பயிர் நோய் கண்டறிதல்',
+        'subtitle': 'நோய்களை அடையாளம் காண உங்கள் பயிரின் புகைப்படத்தை பதிவேற்றவும் அல்லது எடுக்கவும்',
+        'takePhotoInfo': 'புகைப்படம் பதிவேற்றவும்',
+        'camera': 'கேமரா',
+        'gallery': 'கேலரி',
+        'chooseBtn': 'படத்தைத் தேர்ந்தெடுக்கவும்',
+        'diagnoseBtn': 'நோயைக் கண்டறியவும்',
+        'cancelBtn': 'ரத்து செய்',
+        'analyzing': 'பகுப்பாய்வு செய்கிறது...',
+        'confidence': 'நம்பிக்கை',
+        'treatment': 'பரிந்துரைக்கப்பட்ட சிகிச்சை',
+        'prevention': 'எதிர்கால தடுப்பு',
+        'unknown': 'அறியப்படாத நோய்',
+        'recentDiagnoses': 'சமீபத்திய நோயறிதல்கள்',
+        'error': 'படத்தை பகுப்பாய்வு செய்வதில் பிழை. மீண்டும் முயற்சிக்கவும்.',
+        'noApiKey': 'API விசை கட்டமைக்கப்படவில்லை. ஆதரவைத் தொடர்பு கொள்ளவும்.',
+        'noImage': 'தயவுசெய்து முதலில் ஒரு படத்தைத் தேர்ந்தெடுக்கவும்',
+        'cropName': 'பயிர் பெயர்',
+        'diseaseName': 'நோயின் பெயர்',
+        'severity': 'தீவிரம்',
+        'tryAgain': 'மீண்டும் முயற்சிக்கவும்',
+        'clearHistory': 'வரலாற்றை அழிக்கவும்',
+        'capturePhoto': 'புகைப்படம் எடுக்கவும்',
+        'chooseFromGallery': 'கேலரியிலிருந்து தேர்வு செய்யவும்',
+        'saving': 'மேகத்தில் சேமிக்கிறது...',
+        'saved': 'மேகத்தில் சேமிக்கப்பட்டது',
+      },
+    };
+    return translations[widget.language]?[key] ?? translations['EN']![key]!;
+  }
+
+  Future<void> _loadRecentDiagnoses() async {
+    setState(() => _isLoading = true);
+    
+    try {
+      // Load from Firebase first
+      final diagnoses = await _diagnosisService.getDiagnoses();
+      if (diagnoses.isNotEmpty) {
+        setState(() {
+          _recentDiagnoses = diagnoses;
+        });
+      } else {
+        // Fallback to local storage
+        final prefs = await SharedPreferences.getInstance();
+        final String? data = prefs.getString('recent_diagnoses');
+        if (data != null) {
+          try {
+            List<dynamic> decoded = json.decode(data);
+            setState(() {
+              _recentDiagnoses = decoded.cast<Map<String, dynamic>>();
+            });
+          } catch (e) {
+            debugPrint('Error loading diagnoses: $e');
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading from Firebase: $e');
+      // Fallback to local storage
+      final prefs = await SharedPreferences.getInstance();
+      final String? data = prefs.getString('recent_diagnoses');
+      if (data != null) {
+        try {
+          List<dynamic> decoded = json.decode(data);
+          setState(() {
+            _recentDiagnoses = decoded.cast<Map<String, dynamic>>();
+          });
+        } catch (e) {
+          debugPrint('Error loading diagnoses: $e');
+        }
+      }
     }
-    if (difference.inDays > 0) return '${difference.inDays} ${_t('daysAgo')}';
-    if (difference.inHours > 0) return '${difference.inHours} ${_t('hoursAgo')}';
-    if (difference.inMinutes > 0) return '${difference.inMinutes} ${_t('minsAgo')}';
-    return _t('justNow');
+    
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _saveDiagnoses() async {
+    // Save to local storage as backup
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('recent_diagnoses', json.encode(_recentDiagnoses));
+  }
+
+  Future<void> _clearHistory() async {
+    setState(() {
+      _recentDiagnoses.clear();
+    });
+    await _saveDiagnoses();
+    
+    // Also clear from Firebase
+    try {
+      // Delete all diagnoses from Firebase
+      final diagnoses = await _diagnosisService.getDiagnoses();
+      for (var diagnosis in diagnoses) {
+        await _diagnosisService.deleteDiagnosis(
+          diagnosis['id'], 
+          diagnosis['imageUrl']
+        );
+      }
+    } catch (e) {
+      debugPrint('Error clearing Firebase history: $e');
+    }
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: source,
+        imageQuality: 80,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _diagnosisData = null;
+        });
+      }
+    } catch (e) {
+      _showError('Error picking image: $e');
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 10),
+            Text(
+              _t('takePhotoInfo'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const Divider(height: 20),
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: Colors.green),
+              title: Text(_t('capturePhoto')),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: Colors.blue),
+              title: Text(_t('chooseFromGallery')),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _analyzeImage(File image) async {
+    if (_apiKey.isEmpty) {
+      _showError(_t('noApiKey'));
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _diagnosisData = null;
     });
 
     try {
-      final model = GenerativeModel(
-
-        model: 'gemini-2.5-flash',
-        apiKey: 'AIzaSyD7gMsGcyPxnqa5UVT-O4nFJIJy1WJYFKw',
-      );
-
+      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey);
       final imageBytes = await image.readAsBytes();
 
+      final prompt = """
+      You are an expert agricultural disease detection system. Analyze this plant/crop image and identify any diseases.
+      
+      Return ONLY a valid JSON object with this exact structure (no markdown formatting, no extra text):
+      {
+        "cropName": {
+          "EN": "Crop name in English",
+          "SI": "Crop name in Sinhala",
+          "TA": "Crop name in Tamil"
+        },
+        "diseaseName": {
+          "EN": "Disease name in English (or 'Healthy' if no disease)",
+          "SI": "Disease name in Sinhala",
+          "TA": "Disease name in Tamil"
+        },
+        "severity": "HIGH/MEDIUM/LOW/NONE",
+        "confidence": 85,
+        "treatments": {
+          "EN": ["Treatment step 1", "Treatment step 2"],
+          "SI": ["ප්‍රතිකාර පියවර 1", "ප්‍රතිකාර පියවර 2"],
+          "TA": ["சிகிச்சை படி 1", "சிகிச்சை படி 2"]
+        },
+        "preventions": {
+          "EN": ["Prevention method 1", "Prevention method 2"],
+          "SI": ["වැළැක්වීමේ ක්‍රමය 1", "වැළැක්වීමේ ක්‍රමය 2"],
+          "TA": ["தடுப்பு முறை 1", "தடுப்பு முறை 2"]
+        }
+      }
+      
+      If the plant appears healthy, set diseaseName to "Healthy" and severity to "NONE".
+      """;
+
       final content = [
-        Content.multi([
-          TextPart("""Identify the plant disease in this image.
-          Provide the result ONLY as a JSON object with translations for English (EN), Sinhala (SI), and Tamil (TA). Use the exact following structure:
-          {
-            "cropName": { "EN": "Crop Name (e.g. Tomato)", "SI": "Crop Name in Sinhala", "TA": "Crop Name in Tamil" },
-            "diseaseName": { "EN": "Disease Name in English", "SI": "Disease Name in Sinhala", "TA": "Disease Name in Tamil" },
-            "severity": "HIGH", // HIGH, MEDIUM, or LOW
-            "confidence": 92, // Integer
-            "treatments": {
-              "EN": ["Step 1 EN"], "SI": ["Step 1 SI"], "TA": ["Step 1 TA"]
-            },
-            "preventions": {
-              "EN": ["Prevention 1 EN"], "SI": ["Prevention 1 SI"], "TA": ["Prevention 1 TA"]
-            }
-          }
-          Do not include any formatting blocks like ```json. Just the raw JSON object."""),
-          DataPart('image/jpeg', imageBytes),
-        ])
+        Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
       ];
 
       final response = await model.generateContent(content);
 
+      if (response.text == null || response.text!.isEmpty) {
+        throw Exception('No response from API');
+      }
+
+      String cleanText = response.text!;
+      int start = cleanText.indexOf('{');
+      int end = cleanText.lastIndexOf('}');
+      if (start != -1 && end != -1) {
+        cleanText = cleanText.substring(start, end + 1);
+      }
+      
+      Map<String, dynamic> diagnosisData = json.decode(cleanText);
+
       setState(() {
-
-        String cleanText = response.text ?? "{}";
-
-        int startIndex = cleanText.indexOf('{');
-        int endIndex = cleanText.lastIndexOf('}');
-
-        if (startIndex != -1 && endIndex != -1) {
-          cleanText = cleanText.substring(startIndex, endIndex + 1);
-        }
-
-        try {
-          _diagnosisData = json.decode(cleanText);
-          _recentDiagnoses.insert(0, {
-            'date': DateTime.now(),
-            'data': _diagnosisData
-          });
-        } catch (formatError) {
-          throw Exception("AI පිළිතුරේ දත්ත සැකැස්ම වැරදියි. නැවත උත්සාහ කරන්න.");
-        }
-
+        _diagnosisData = diagnosisData;
         _isLoading = false;
       });
+
+      // Save to Firebase (show saving indicator)
+      setState(() => _isSaving = true);
+      
+      try {
+        await _diagnosisService.saveDiagnosis(
+          imageFile: image,
+          diagnosisData: diagnosisData,
+          language: widget.language,
+        );
+        
+        // Refresh recent diagnoses from Firebase
+        await _loadRecentDiagnoses();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_t('saved')),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e) {
+        // Save to local storage as fallback
+        final newDiagnosis = {
+          'date': DateTime.now().toIso8601String(),
+          'data': diagnosisData,
+          'imagePath': image.path,
+        };
+        _recentDiagnoses.insert(0, newDiagnosis);
+        if (_recentDiagnoses.length > 10) {
+          _recentDiagnoses = _recentDiagnoses.take(10).toList();
+        }
+        await _saveDiagnoses();
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Saved locally only. ${_t('error')}'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+      
+      setState(() => _isSaving = false);
+      
     } catch (e) {
       setState(() {
         _isLoading = false;
+        _isSaving = false;
       });
-      print("Error analyzing image: $e");
-
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("දෝෂයක් මතු විය: ${e.toString()}"),
-            backgroundColor: Colors.red[700],
-            duration: Duration(seconds: 5),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
+      _showError('${_t('error')}\n${e.toString()}');
     }
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -240,380 +416,487 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
     });
   }
 
-  Widget _langButton(String code, String text) {
-    bool isSelected = _currentLang == code;
-    return GestureDetector(
-      onTap: () {
-        setState(() { _currentLang = code; });
-      },
-      child: Text(
-        text,
-        style: TextStyle(
-            color: isSelected ? Colors.white : Colors.white54,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontSize: 14
-        ),
-      ),
-    );
+  Color _getSeverityColor(String severity) {
+    switch (severity.toUpperCase()) {
+      case 'HIGH':
+        return Colors.red;
+      case 'MEDIUM':
+        return Colors.orange;
+      case 'LOW':
+        return Colors.yellow[700]!;
+      case 'NONE':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
   }
 
-  Widget _buildBottomNavigationBar() {
-    final List<Map<String, dynamic>> navItems = [
-      {'icon': Icons.home_outlined, 'key': 'navHome'},
-      {'icon': Icons.camera_alt_outlined, 'key': 'navDiagnose'},
-      {'icon': Icons.shopping_bag_outlined, 'key': 'navMarket'},
-      {'icon': Icons.grass_outlined, 'key': 'navCrops'},
-      {'icon': Icons.cloud_outlined, 'key': 'navWeather'},
-      {'icon': Icons.chat_bubble_outline, 'key': 'navForum'},
-      {'icon': Icons.person_outline, 'key': 'navProfile'},
-    ];
+  String _formatDate(String dateTimeString) {
+    try {
+      DateTime date = DateTime.parse(dateTimeString);
+      final now = DateTime.now();
+      final diff = now.difference(date);
 
-    int activeIndex = 1;
-
-    return Container(
-      height: 65,
-      decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, -1))
-          ]
-      ),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: BouncingScrollPhysics(),
-        itemCount: navItems.length,
-        itemBuilder: (context, index) {
-          bool isActive = index == activeIndex;
-          final item = navItems[index];
-
-          return InkWell(
-            onTap: () {},
-            child: Container(
-              width: MediaQuery.of(context).size.width / 4.5,
-              decoration: BoxDecoration(
-                color: isActive ? Colors.green[50] : Colors.transparent,
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  item.containsKey('iconPath')
-                      ? Image.asset(
-                    item['iconPath'],
-                    width: 24,
-                    height: 24,
-                    color: isActive ? Colors.green[700] : Colors.blueGrey[400],
-                  )
-                      : Icon(
-                    item['icon'],
-                    color: isActive ? Colors.green[700] : Colors.blueGrey[400],
-                    size: 24,
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    _t(item['key']),
-                    style: TextStyle(
-                        color: isActive ? Colors.green[700] : Colors.blueGrey[400],
-                        fontSize: 11,
-                        fontWeight: isActive ? FontWeight.bold : FontWeight.normal
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+      if (diff.inDays > 7) {
+        return '${(diff.inDays / 7).floor()} weeks ago';
+      } else if (diff.inDays > 0) {
+        return '${diff.inDays} days ago';
+      } else if (diff.inHours > 0) {
+        return '${diff.inHours} hours ago';
+      } else if (diff.inMinutes > 0) {
+        return '${diff.inMinutes} minutes ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      return 'Recently';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        backgroundColor: Colors.green[700],
-        title: Image.asset(
-          'assets/logo.png',
-          height: 40,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Text('AgriMate', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold));
-          },
-        ),
-        actions: [
-          Center(
-              child: Padding(
-                  padding: const EdgeInsets.only(right: 16.0),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _langButton('SI', 'සිංහල'),
-                      Text(" | ", style: TextStyle(color: Colors.white54)),
-                      _langButton('TA', 'தமிழ்'),
-                      Text(" | ", style: TextStyle(color: Colors.white54)),
-                      _langButton('EN', 'EN'),
-                    ],
-                  )
-              )
-          )
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey.shade300, width: 1)),
-              child: Padding(
-                padding: EdgeInsets.all(16),
+      backgroundColor: const Color(0xFFF2F7F4),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header
+              Center(
                 child: Column(
                   children: [
-                    _selectedImage != null
-                        ? ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
-                      child: Image.file(_selectedImage!, height: 200, width: double.infinity, fit: BoxFit.cover),
-                    )
-                        : Container(
-                      height: 150,
-                      width: double.infinity,
-                      decoration: BoxDecoration(color: Colors.green[50], borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.green.shade200)),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add_a_photo_outlined, size: 40, color: Colors.green[700]),
-                          SizedBox(height: 10),
-                          Text(_t('takePhotoInfo'), style: TextStyle(color: Colors.green[800], fontWeight: FontWeight.w500))
-                        ],
+                    const Icon(
+                      Icons.health_and_safety,
+                      size: 48,
+                      color: Color(0xFF1B5E20),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _t('title'),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1B5E20),
                       ),
                     ),
-                    SizedBox(height: 20),
-
-                    if (_selectedImage == null)
-                      ElevatedButton.icon(
-                        onPressed: _pickImage,
-                        icon: Icon(Icons.upload_file),
-                        label: Text(_t('chooseBtn'), style: TextStyle(fontSize: 16)),
-                        style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white, padding: EdgeInsets.symmetric(vertical: 12), minimumSize: Size(double.infinity, 50), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                      )
-                    else
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : () => _analyzeImage(_selectedImage!),
-                              child: Text(_t('diagnoseBtn')),
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700], foregroundColor: Colors.white, padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: _isLoading ? null : _cancelDiagnosis,
-                              child: Text(_t('cancelBtn')),
-                              style: OutlinedButton.styleFrom(foregroundColor: Colors.grey[700], padding: EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
-                            ),
-                          )
-                        ],
-                      )
+                    const SizedBox(height: 4),
+                    Text(
+                      _t('subtitle'),
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      textAlign: TextAlign.center,
+                    ),
                   ],
                 ),
               ),
-            ),
+              const SizedBox(height: 20),
 
-            if (_isLoading)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 30.0),
-                child: Center(
-                    child: Column(
-                      children: [
-                        CircularProgressIndicator(color: Colors.green[600]),
-                        SizedBox(height: 15),
-                        Text(_t('analyzing'), style: TextStyle(color: Colors.grey[700]))
-                      ],
-                    )
-                ),
-              ),
-
-            if (_diagnosisData != null && !_isLoading) ...[
-              SizedBox(height: 20),
-
+              // Image Selection Card
               Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey.shade200, width: 1)),
-                child: Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: Text(
-                                _diagnosisData!['diseaseName'][_currentLang] ?? _t('unknown'),
-                                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey[900])
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          Container(
-                            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(color: _getSeverityColor(_diagnosisData!['severity'] ?? 'LOW').withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
-                            child: Text(
-                                "${_diagnosisData!['severity'] ?? 'N/A'} SEVERITY",
-                                style: TextStyle(color: _getSeverityColor(_diagnosisData!['severity'] ?? 'LOW'), fontSize: 10, fontWeight: FontWeight.bold)
-                            ),
-                          )
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      Text("${_t('confidence')}: ${_diagnosisData!['confidence'] ?? 0}%", style: TextStyle(color: Colors.grey[600], fontSize: 13)),
-                      SizedBox(height: 8),
-                      LinearProgressIndicator(value: (_diagnosisData!['confidence'] ?? 0) / 100, backgroundColor: Colors.grey[200], color: Colors.green[500], minHeight: 6, borderRadius: BorderRadius.circular(3))
-                    ],
-                  ),
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ),
-
-              SizedBox(height: 15),
-
-              Card(
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey.shade200, width: 1)),
                 child: Padding(
-                  padding: EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Container(padding: EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.orange[50], borderRadius: BorderRadius.circular(8)), child: Icon(Icons.warning_amber_rounded, color: Colors.orange[800], size: 20)),
-                          SizedBox(width: 12),
-                          Text(_t('treatment'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey[900])),
-                        ],
-                      ),
-                      SizedBox(height: 20),
-                      if (_diagnosisData!['treatments'][_currentLang] != null)
-                        ...List.generate(
-                            (_diagnosisData!['treatments'][_currentLang] as List).length,
-                                (index) => Padding(
-                              padding: const EdgeInsets.only(bottom: 16.0),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  CircleAvatar(radius: 12, backgroundColor: Colors.green[50], child: Text("${index + 1}", style: TextStyle(color: Colors.green[700], fontSize: 12, fontWeight: FontWeight.bold))),
-                                  SizedBox(width: 12),
-                                  Expanded(child: Text(_diagnosisData!['treatments'][_currentLang][index].toString(), style: TextStyle(color: Colors.blueGrey[800], height: 1.4, fontSize: 14)))
-                                ],
+                      _selectedImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                _selectedImage!,
+                                height: 200,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
                               ),
                             )
+                          : Container(
+                              height: 150,
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: Colors.green[50],
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.green[200]!),
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.photo_camera,
+                                    size: 48,
+                                    color: Colors.green[400],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _t('takePhotoInfo'),
+                                    style: TextStyle(color: Colors.green[700]),
+                                  ),
+                                ],
+                              ),
+                            ),
+                      const SizedBox(height: 16),
+
+                      if (_selectedImage == null)
+                        ElevatedButton.icon(
+                          onPressed: _showImageSourceDialog,
+                          icon: const Icon(Icons.add_photo_alternate),
+                          label: Text(_t('chooseBtn')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
                         )
+                      else
+                        Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton(
+                                    onPressed: _isLoading || _isSaving
+                                        ? null
+                                        : () => _analyzeImage(_selectedImage!),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: _isLoading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : Text(_t('diagnoseBtn')),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: OutlinedButton(
+                                    onPressed: _isLoading || _isSaving
+                                        ? null
+                                        : _cancelDiagnosis,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.grey[700],
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    child: Text(_t('cancelBtn')),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (_isSaving) ...[
+                              const SizedBox(height: 12),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const SizedBox(
+                                    height: 16,
+                                    width: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _t('saving'),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ),
                     ],
                   ),
                 ),
               ),
 
-              SizedBox(height: 15),
+              // Loading Indicator
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        CircularProgressIndicator(color: Colors.green),
+                        SizedBox(height: 12),
+                        Text('Analyzing image...'),
+                      ],
+                    ),
+                  ),
+                ),
 
-              if (_diagnosisData!['preventions'][_currentLang] != null)
+              // Diagnosis Result (same as before)
+              if (_diagnosisData != null && !_isLoading) ...[
+                const SizedBox(height: 20),
                 Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15), side: BorderSide(color: Colors.grey.shade200, width: 1)),
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   child: Padding(
-                    padding: EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(padding: EdgeInsets.all(6), decoration: BoxDecoration(color: Colors.green[50], borderRadius: BorderRadius.circular(8)), child: Icon(Icons.check_circle_outline, color: Colors.green[700], size: 20)),
-                            SizedBox(width: 12),
-                            Text(_t('prevention'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey[900])),
+                            Expanded(
+                              child: Text(
+                                _diagnosisData!['diseaseName']?[widget.language] ?? _t('unknown'),
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: _getSeverityColor(
+                                  _diagnosisData!['severity'] ?? 'LOW',
+                                ).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                _diagnosisData!['severity'] ?? 'UNKNOWN',
+                                style: TextStyle(
+                                  color: _getSeverityColor(
+                                    _diagnosisData!['severity'] ?? 'LOW',
+                                  ),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
-                        SizedBox(height: 20),
-                        ...List.generate(
-                            (_diagnosisData!['preventions'][_currentLang] as List).length,
-                                (index) => Padding(
-                              padding: const EdgeInsets.only(bottom: 16.0),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_diagnosisData!['cropName']?[widget.language] ?? 'Plant'}',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                        const SizedBox(height: 16),
+                        const Divider(),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(Icons.analytics, size: 16, color: Colors.green),
+                            const SizedBox(width: 8),
+                            Text('${_t('confidence')}: ${_diagnosisData!['confidence'] ?? 0}%'),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        LinearProgressIndicator(
+                          value: (_diagnosisData!['confidence'] ?? 0) / 100,
+                          backgroundColor: Colors.grey[200],
+                          color: Colors.green,
+                          minHeight: 6,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                if (_diagnosisData!['treatments'] != null)
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.medical_services, color: Colors.orange[700]),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _t('treatment'),
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ...List.generate(
+                            (_diagnosisData!['treatments'][widget.language] as List).length,
+                            (index) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
                               child: Row(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(Icons.check_circle_outline, color: Colors.green[500], size: 22),
-                                  SizedBox(width: 12),
-                                  Expanded(child: Text(_diagnosisData!['preventions'][_currentLang][index].toString(), style: TextStyle(color: Colors.blueGrey[800], height: 1.4, fontSize: 14)))
+                                  CircleAvatar(
+                                    radius: 12,
+                                    backgroundColor: Colors.green[50],
+                                    child: Text(
+                                      '${index + 1}',
+                                      style: TextStyle(color: Colors.green[700], fontSize: 10),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _diagnosisData!['treatments'][widget.language][index].toString(),
+                                      style: const TextStyle(height: 1.4),
+                                    ),
+                                  ),
                                 ],
                               ),
-                            )
-                        )
-                      ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                )
-            ],
-
-            if (_recentDiagnoses.isNotEmpty) ...[
-              SizedBox(height: 30),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4.0),
-                child: Text(_t('recentDiagnoses'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey[900])),
-              ),
-              SizedBox(height: 15),
-
-              ..._recentDiagnoses.map((item) {
-                final data = item['data'];
-                final date = item['date'] as DateTime;
-
-                return Card(
-                  elevation: 0,
-                  margin: EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                                data['cropName'] != null ? data['cropName'][_currentLang] ?? 'Plant' : 'Plant',
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey[900])
+                const SizedBox(height: 16),
+                if (_diagnosisData!['preventions'] != null)
+                  Card(
+                    elevation: 4,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.blue[50],
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(Icons.shield, color: Colors.blue[700]),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                _t('prevention'),
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          ...List.generate(
+                            (_diagnosisData!['preventions'][widget.language] as List).length,
+                            (index) => Padding(
+                              padding: const EdgeInsets.only(bottom: 12),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.green[400], size: 20),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      _diagnosisData!['preventions'][widget.language][index].toString(),
+                                      style: const TextStyle(height: 1.4),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            SizedBox(height: 4),
-                            Text(
-                                data['diseaseName'] != null ? data['diseaseName'][_currentLang] ?? 'Unknown' : 'Unknown',
-                                style: TextStyle(fontSize: 14, color: Colors.blueGrey[600])
-                            ),
-                          ],
-                        ),
-                        Text(
-                            _timeAgo(date),
-                            style: TextStyle(fontSize: 13, color: Colors.grey[500])
-                        )
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                );
-              }).toList()
+              ],
+
+              // Recent Diagnoses
+              if (_recentDiagnoses.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _t('recentDiagnoses'),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    TextButton.icon(
+                      onPressed: _clearHistory,
+                      icon: const Icon(Icons.delete_outline, size: 16),
+                      label: Text(_t('clearHistory')),
+                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ..._recentDiagnoses.take(5).map((item) {
+                  final data = item['data'];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.green[100],
+                        child: const Icon(Icons.eco, color: Colors.green),
+                      ),
+                      title: Text(
+                        data['diseaseName']?[widget.language] ?? 'Unknown',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      ),
+                      subtitle: Text(
+                        data['cropName']?[widget.language] ?? 'Plant',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      trailing: Text(
+                        _formatDate(item['date']),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                      ),
+                      onTap: () {
+                        setState(() {
+                          _diagnosisData = data;
+                        });
+                        Scrollable.ensureVisible(context);
+                      },
+                    ),
+                  );
+                }),
+              ],
             ],
-            SizedBox(height: 20),
-          ],
+          ),
         ),
       ),
-      bottomNavigationBar: _buildBottomNavigationBar(),
     );
-  }
-
-  Color _getSeverityColor(String severity) {
-    switch(severity.toUpperCase()) {
-      case 'HIGH': return Colors.red;
-      case 'MEDIUM': return Colors.orange;
-      case 'LOW': return Colors.green;
-      default: return Colors.grey;
-    }
   }
 }

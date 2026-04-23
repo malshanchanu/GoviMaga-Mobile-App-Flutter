@@ -1,229 +1,210 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../services/crop_service.dart';
+import '../../widgets/login_required_dialog.dart';
+import 'add_crop_screen.dart';
+import 'package:intl/intl.dart';
 
-void main() {
-  runApp(const AgriMateApp());
+class CropsHome extends StatefulWidget {
+  final String language;
+  const CropsHome({super.key, required this.language});
+
+  @override
+  State<CropsHome> createState() => _CropsHomeState();
 }
 
-class AgriMateApp extends StatelessWidget {
-  const AgriMateApp({super.key});
+class _CropsHomeState extends State<CropsHome> {
+  final CropService _cropService = CropService();
+  bool _isGuest = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkGuestMode();
+  }
+
+  Future<void> _checkGuestMode() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _isGuest = prefs.getBool('is_guest') ?? false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AgriMate',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1B7A3E)),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
+    if (_isGuest || FirebaseAuth.instance.currentUser == null) {
+      return _buildGuestMessage();
+    }
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F7F5),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _cropService.getUserCrops(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: Color(0xFF1B5E20)));
+          }
+
+          var crops = snapshot.data?.docs.toList() ?? [];
+          crops.sort((a, b) {
+            final aData = a.data() as Map<String, dynamic>;
+            final bData = b.data() as Map<String, dynamic>;
+            final aTime = (aData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final bTime = (bData['createdAt'] as Timestamp?)?.toDate() ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return bTime.compareTo(aTime);
+          });
+
+          return CustomScrollView(
+            slivers: [
+              _buildSliverAppBar(crops.length),
+              if (crops.isEmpty)
+                SliverFillRemaining(
+                  child: _buildEmptyState(),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) => _buildCropCard(crops[index]),
+                      childCount: crops.length,
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
       ),
-      home: const CropManagementPage(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          if (_isGuest) {
+            LoginRequiredDialog.show(context: context, action: 'add a crop');
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AddCropScreen(language: widget.language),
+            ),
+          );
+        },
+        backgroundColor: const Color(0xFF1B5E20),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text('New Crop', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        elevation: 4,
+      ),
     );
   }
-}
 
-// ─────────────────────────────────────────────
-// DATA MODELS
-// ─────────────────────────────────────────────
-
-class CropData {
-  final String name;
-  final String plantedDate;
-  final String stage;
-  final Color stageColor;
-  final double progress;
-  final int daysGrown;
-  final String nextTask;
-  final String taskDate;
-
-  const CropData({
-    required this.name,
-    required this.plantedDate,
-    required this.stage,
-    required this.stageColor,
-    required this.progress,
-    required this.daysGrown,
-    required this.nextTask,
-    required this.taskDate,
-  });
-}
-
-class UpcomingTask {
-  final String title;
-  final String crop;
-  final String date;
-  final IconData icon;
-  final Color iconColor;
-
-  const UpcomingTask({
-    required this.title,
-    required this.crop,
-    required this.date,
-    required this.icon,
-    required this.iconColor,
-  });
-}
-
-// ─────────────────────────────────────────────
-// MAIN PAGE
-// ─────────────────────────────────────────────
-
-class CropManagementPage extends StatefulWidget {
-  const CropManagementPage({super.key});
-
-  @override
-  State<CropManagementPage> createState() => _CropManagementPageState();
-}
-
-class _CropManagementPageState extends State<CropManagementPage> {
-  int _selectedIndex = 4; // Crops tab selected
-
-  static const Color primaryGreen = Color(0xFF1B7A3E);
-  static const Color lightGreen = Color(0xFFE8F5EE);
-  static const Color bgColor = Color(0xFFF2F7F4);
-
-  final List<CropData> crops = const [
-    CropData(
-      name: 'Rice (Nadu)',
-      plantedDate: '2026-01-15',
-      stage: 'Vegetative',
-      stageColor: Color(0xFF4CAF50),
-      progress: 0.35,
-      daysGrown: 24,
-      nextTask: 'Apply fertilizer',
-      taskDate: '2026-02-10',
-    ),
-    CropData(
-      name: 'Tomato',
-      plantedDate: '2026-01-20',
-      stage: 'Flowering',
-      stageColor: Color(0xFFFF9800),
-      progress: 0.45,
-      daysGrown: 19,
-      nextTask: 'Pest inspection',
-      taskDate: '2026-02-09',
-    ),
-    CropData(
-      name: 'Green Chili',
-      plantedDate: '2026-01-05',
-      stage: 'Fruiting',
-      stageColor: Color(0xFFF44336),
-      progress: 0.70,
-      daysGrown: 34,
-      nextTask: 'Start harvesting',
-      taskDate: '2026-02-12',
-    ),
-  ];
-
-  final List<UpcomingTask> upcomingTasks = const [
-    UpcomingTask(
-      title: 'Water rice field',
-      crop: 'Rice',
-      date: '2026-02-08',
-      icon: Icons.water_drop_outlined,
-      iconColor: Color(0xFF2196F3),
-    ),
-    UpcomingTask(
-      title: 'Apply fertilizer to tomato',
-      crop: 'Tomato',
-      date: '2026-02-09',
-      icon: Icons.eco_outlined,
-      iconColor: Color(0xFF4CAF50),
-    ),
-    UpcomingTask(
-      title: 'Pest control for chili',
-      crop: 'Chili',
-      date: '2026-02-11',
-      icon: Icons.notifications_outlined,
-      iconColor: Color(0xFFFF5722),
-    ),
-  ];
-
-  final List<_NavItem> navItems = const [
-    _NavItem(icon: Icons.home_outlined, label: 'Home'),
-    _NavItem(icon: Icons.qr_code_scanner_outlined, label: 'Scan'),
-    _NavItem(icon: Icons.wb_sunny_outlined, label: 'Weather'),
-    _NavItem(icon: Icons.storefront_outlined, label: 'Market'),
-    _NavItem(icon: Icons.grass_outlined, label: 'Crops'),
-    _NavItem(icon: Icons.menu_book_outlined, label: 'Learn'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: bgColor,
-      body: SafeArea(
-        child: Column(
+  Widget _buildSliverAppBar(int totalCrops) {
+    return SliverAppBar(
+      expandedHeight: 180.0,
+      floating: false,
+      pinned: true,
+      backgroundColor: const Color(0xFF1B5E20),
+      flexibleSpace: FlexibleSpaceBar(
+        titlePadding: const EdgeInsets.only(left: 16, bottom: 16),
+        title: Text(
+          'My Farm',
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 22,
+          ),
+        ),
+        background: Stack(
+          fit: StackFit.expand,
           children: [
-            _buildAppBar(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildPageHeader(),
-                    const SizedBox(height: 16),
-                    _buildAddCropButton(),
-                    const SizedBox(height: 20),
-                    _buildSectionTitle('🌱 My Crops'),
-                    const SizedBox(height: 12),
-                    ...crops.map((crop) => _buildCropCard(crop)),
-                    const SizedBox(height: 20),
-                    _buildUpcomingTasks(),
-                    const SizedBox(height: 20),
-                    _buildStageCard(),
-                    const SizedBox(height: 12),
-                  ],
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
                 ),
               ),
             ),
-            _buildBottomNav(),
+            Positioned(
+              right: -50,
+              top: -50,
+              child: Icon(
+                Icons.eco,
+                size: 200,
+                color: Colors.white.withValues(alpha: 0.1),
+              ),
+            ),
+            Positioned(
+              left: 16,
+              bottom: 60,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.grass, color: Colors.white, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          '$totalCrops Active Crops',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  // ── App Bar ──────────────────────────────────
-
-  Widget _buildAppBar() {
-    return Container(
-      color: primaryGreen,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
+              color: Colors.green.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.eco, color: Colors.white, size: 22),
+            child: const Icon(Icons.yard_outlined, size: 80, color: Color(0xFF2E7D32)),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(height: 24),
           const Text(
-            'AgriMate',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.5,
-            ),
+            'Your Field is Empty',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF1B5E20)),
           ),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.white54),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.language, color: Colors.white, size: 16),
-                SizedBox(width: 4),
-                Text('GB', style: TextStyle(color: Colors.white, fontSize: 13)),
-              ],
+          const SizedBox(height: 12),
+          Text(
+            'Plant your first crop to get personalized\ncare reminders and harvest estimates.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.5),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => AddCropScreen(language: widget.language)),
+              );
+            },
+            icon: const Icon(Icons.add_circle_outline),
+            label: const Text('Plant First Crop'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF1B5E20),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
             ),
           ),
         ],
@@ -231,394 +212,353 @@ class _CropManagementPageState extends State<CropManagementPage> {
     );
   }
 
-  // ── Page Header ──────────────────────────────
+  Widget _buildCropCard(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final plantedDate = (data['plantedDate'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final daysPlanted = DateTime.now().difference(plantedDate).inDays;
+    
+    // Simple mock estimation based on crop variety/name
+    int estHarvestDays = 100;
+    if (data['name'].toString().toLowerCase().contains('paddy')) {
+      estHarvestDays = 120;
+    } else if (data['name'].toString().toLowerCase().contains('tomato')) {
+      estHarvestDays = 75;
+    }
+    
+    final progress = (daysPlanted / estHarvestDays).clamp(0.0, 1.0);
 
-  Widget _buildPageHeader() {
-  return SizedBox(
-    width: double.infinity,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Text(
-          'Crop Management Tracker',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1B7A3E),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Track your crops with automated care reminders',
-          textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-        ),
-      ],
-    ),
-  );
-}
-
-  // ── Add Crop Button ──────────────────────────
-
-  Widget _buildAddCropButton() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: () {},
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Add New Crop',
-          style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: primaryGreen,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          elevation: 0,
-        ),
-      ),
-    );
-  }
-
-  // ── Section Title ────────────────────────────
-
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF1A1A1A),
-      ),
-    );
-  }
-
-  // ── Crop Card ────────────────────────────────
-
-  Widget _buildCropCard(CropData crop) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title + Stage badge
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                crop.name,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A1A1A),
-                ),
-              ),
-              _buildStageBadge(crop.stage, crop.stageColor),
-            ],
-          ),
-          const SizedBox(height: 6),
-
-          // Planted date
-          Row(
-            children: [
-              Icon(Icons.calendar_today_outlined, size: 13, color: Colors.grey[500]),
-              const SizedBox(width: 4),
-              Text(
-                'Planted: ${crop.plantedDate}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Progress
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Growth Progress', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-              Text(
-                '${(crop.progress * 100).toInt()}%',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: crop.progress,
-              backgroundColor: Colors.grey[200],
-              valueColor: AlwaysStoppedAnimation<Color>(primaryGreen),
-              minHeight: 7,
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // Days grown
-          Row(
-            children: [
-              Icon(Icons.access_time, size: 13, color: Colors.grey[500]),
-              const SizedBox(width: 4),
-              Text(
-                '${crop.daysGrown} days grown',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Next task box
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: lightGreen,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.notifications_outlined, size: 14, color: primaryGreen),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Next Task',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: primaryGreen,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  crop.nextTask,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  crop.taskDate,
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStageBadge(String stage, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.4)),
-      ),
-      child: Text(
-        stage,
-        style: TextStyle(
-          fontSize: 12,
-          color: color,
-          fontWeight: FontWeight.w600,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => _showTasksBottomSheet(context, doc.id, data['name'] ?? 'Unknown'),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F5E9),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(Icons.energy_savings_leaf, color: Color(0xFF2E7D32), size: 28),
+                          ),
+                          const SizedBox(width: 16),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                data['name'] ?? 'Unknown Crop',
+                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                data['variety'] ?? 'Standard Variety',
+                                style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert, color: Colors.grey),
+                        onSelected: (value) async {
+                          if (value == 'edit') {
+                            final dataWithId = Map<String, dynamic>.from(data);
+                            dataWithId['id'] = doc.id;
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => AddCropScreen(language: widget.language, cropToEdit: dataWithId),
+                              ),
+                            );
+                          } else if (value == 'delete') {
+                            _showDeleteConfirmation(doc.id);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          const PopupMenuItem(value: 'edit', child: Row(children: [Icon(Icons.edit, size: 18), SizedBox(width: 8), Text('Edit')])),
+                          const PopupMenuItem(value: 'delete', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 18), SizedBox(width: 8), Text('Delete', style: TextStyle(color: Colors.red))])),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildStatColumn('Planted', DateFormat('MMM d, y').format(plantedDate)),
+                      _buildStatColumn('Age', '$daysPlanted days'),
+                      _buildStatColumn('Status', progress >= 1.0 ? 'Ready' : 'Growing', valueColor: progress >= 1.0 ? Colors.green : Colors.orange),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.grey[200],
+                            valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
+                            minHeight: 8,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        '${(progress * 100).toInt()}%',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2E7D32)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
     );
   }
 
-  // ── Upcoming Tasks ───────────────────────────
-
-  Widget _buildUpcomingTasks() {
+  Widget _buildStatColumn(String label, String value, {Color? valueColor}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Icon(Icons.calendar_month, color: Color(0xFF1B7A3E), size: 20),
-            const SizedBox(width: 6),
-            const Text(
-              'Upcoming Tasks',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: upcomingTasks.asMap().entries.map((entry) {
-              final i = entry.key;
-              final task = entry.value;
-              return Column(
-                children: [
-                  _buildTaskRow(task),
-                  if (i < upcomingTasks.length - 1)
-                    Divider(height: 1, color: Colors.grey[100], indent: 16, endIndent: 16),
-                ],
-              );
-            }).toList(),
-          ),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+        const SizedBox(height: 4),
+        Text(value, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: valueColor ?? Colors.black87)),
       ],
     );
   }
 
-  Widget _buildTaskRow(UpcomingTask task) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: task.iconColor.withOpacity(0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(task.icon, size: 18, color: task.iconColor),
+  void _showDeleteConfirmation(String cropId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Crop'),
+        content: const Text('Are you sure you want to delete this crop and all its tasks? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _cropService.deleteCrop(cropId);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Delete'),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  task.title,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${task.crop} • ${task.date}',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                ),
-              ],
-            ),
-          ),
-          Icon(Icons.check_circle_outline, color: Colors.grey[400], size: 20),
         ],
       ),
     );
   }
 
-  // ── Stage Card ───────────────────────────────
-
-  Widget _buildStageCard() {
-    final stages = ['Germination', 'Vegetative', 'Flowering', 'Fruiting', 'Mature'];
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: primaryGreen,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Stage',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+  void _showTasksBottomSheet(BuildContext context, String cropId, String cropName) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        height: MediaQuery.of(context).size.height * 0.75,
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 12, bottom: 8),
+              width: 50,
+              height: 5,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          ...stages.map(
-            (stage) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+            Padding(
+              padding: const EdgeInsets.all(20),
               child: Row(
                 children: [
-                  const Icon(Icons.circle, color: Colors.white, size: 8),
-                  const SizedBox(width: 10),
-                  Text(
-                    stage,
-                    style: const TextStyle(color: Colors.white, fontSize: 14),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE8F5E9),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.calendar_month, color: Color(0xFF2E7D32)),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '$cropName Care',
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Upcoming Reminders & Tasks',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Bottom Navigation ─────────────────────────
-
-  Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: navItems.asMap().entries.map((entry) {
-          final i = entry.key;
-          final item = entry.value;
-          final selected = i == _selectedIndex;
-          return GestureDetector(
-            onTap: () => setState(() => _selectedIndex = i),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  item.icon,
-                  size: 22,
-                  color: selected ? primaryGreen : Colors.grey[400],
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  item.label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: selected ? primaryGreen : Colors.grey[400],
-                    fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
-                  ),
-                ),
-              ],
+            const Divider(height: 1),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _cropService.getTasksForCrop(cropId),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator(color: Color(0xFF1B5E20)));
+                  }
+                  final tasks = snapshot.data?.docs ?? [];
+                  if (tasks.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.check_circle_outline, size: 64, color: Colors.grey[300]),
+                          const SizedBox(height: 16),
+                          Text('All caught up!', style: TextStyle(fontSize: 18, color: Colors.grey[600])),
+                        ],
+                      ),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: const EdgeInsets.only(top: 8, bottom: 24),
+                    itemCount: tasks.length,
+                    itemBuilder: (context, index) {
+                      final task = tasks[index].data() as Map<String, dynamic>;
+                      final dueDate = (task['dueDate'] as Timestamp).toDate();
+                      final isCompleted = task['isCompleted'] ?? false;
+                      final isOverdue = !isCompleted && dueDate.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+                      
+                      return AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isCompleted ? Colors.grey[50] : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isCompleted ? Colors.grey[200]! : (isOverdue ? Colors.red[100]! : Colors.grey[200]!),
+                            width: 1,
+                          ),
+                          boxShadow: isCompleted ? [] : [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.02),
+                              blurRadius: 5,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: CheckboxListTile(
+                          value: isCompleted,
+                          activeColor: const Color(0xFF2E7D32),
+                          checkboxShape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          title: Text(
+                            task['title'],
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: isCompleted ? FontWeight.normal : FontWeight.w600,
+                              decoration: isCompleted ? TextDecoration.lineThrough : null,
+                              color: isCompleted ? Colors.grey[400] : Colors.black87,
+                            ),
+                          ),
+                          subtitle: Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.access_time, 
+                                  size: 14, 
+                                  color: isCompleted ? Colors.grey[400] : (isOverdue ? Colors.red : Colors.grey[600]),
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  DateFormat('MMM d, yyyy').format(dueDate),
+                                  style: TextStyle(
+                                    color: isCompleted ? Colors.grey[400] : (isOverdue ? Colors.red : Colors.grey[600]),
+                                    fontWeight: isOverdue && !isCompleted ? FontWeight.bold : FontWeight.normal,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          onChanged: (bool? value) async {
+                            if (value != null) {
+                              await _cropService.toggleTaskCompletion(cropId, tasks[index].id, value);
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          );
-        }).toList(),
+          ],
+        ),
       ),
     );
   }
-}
 
-class _NavItem {
-  final IconData icon;
-  final String label;
-  const _NavItem({required this.icon, required this.label});
+  Widget _buildGuestMessage() {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('My Crops'),
+        backgroundColor: const Color(0xFF1B5E20),
+        foregroundColor: Colors.white,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock_outline, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            const Text(
+              'Login Required',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Please login to manage your crops.',
+              style: TextStyle(color: Colors.grey),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                LoginRequiredDialog.show(context: context, action: 'manage crops');
+              },
+              child: const Text('Login'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

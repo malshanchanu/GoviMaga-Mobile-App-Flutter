@@ -1,1115 +1,812 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
-void main() {
-  runApp(const AgriMateApp());
-}
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart' as app_auth;
+import '../../widgets/login_required_dialog.dart';
 
-class AgriMateApp extends StatelessWidget {
-  const AgriMateApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'AgriMate',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF00A34D),
-          primary: const Color(0xFF00A34D),
-        ),
-        scaffoldBackgroundColor: const Color(0xFFF1F8F5),
-        useMaterial3: true,
-        fontFamily: 'sans-serif',
-      ),
-      home: const MainScreen(),
-    );
-  }
-}
-
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
-
-  @override
-  State<MainScreen> createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 5; // "Learn" tab
-  String _selectedLanguage = 'English';
-
-  final Map<String, String> _localizedLogoNames = {
-    'English': 'AgriMate',
-    'සිංහල': 'ඇග්‍රිමේට්',
-    'தமிழ்': 'அக்ரிமேட்',
-  };
-
-  String _getCountryCode(String language) {
-    switch (language) {
-      case 'English':
-        return 'GB';
-      case 'සිංහල':
-      case 'தமிழ்':
-        return 'LK';
-      default:
-        return 'GB';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final List<Widget> _pages = [
-      const Center(child: Text('Home')),
-      const Center(child: Text('Scan')),
-      const Center(child: Text('Weather')),
-      const Center(child: Text('Market')),
-      const Center(child: Text('Crops')),
-      KnowledgeHubPage(language: _selectedLanguage),
-    ];
-
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF00A34D),
-        elevation: 0,
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.eco, color: Colors.white, size: 20),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              _localizedLogoNames[_selectedLanguage] ?? 'AgriMate',
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w900,
-                fontSize: 22,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          PopupMenuButton<String>(
-            onSelected: (String language) {
-              setState(() {
-                _selectedLanguage = language;
-              });
-            },
-            offset: const Offset(0, 50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(
-                enabled: false,
-                height: 30,
-                child: Text(
-                  'SELECT LANGUAGE',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green[800],
-                    letterSpacing: 0.5,
-                  ),
-                ),
-              ),
-              const PopupMenuDivider(height: 1),
-              _buildLanguageItem('English', 'GB'),
-              _buildLanguageItem('සිංහල', 'LK'),
-              _buildLanguageItem('தமிழ்', 'LK'),
-            ],
-            child: Container(
-              margin: const EdgeInsets.only(right: 16, top: 12, bottom: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.language, color: Colors.white, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    _getCountryCode(_selectedLanguage),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: _pages[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        selectedItemColor: const Color(0xFF00A34D),
-        unselectedItemColor: Colors.grey,
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.qr_code_scanner), label: 'Scan'),
-          BottomNavigationBarItem(icon: Icon(Icons.wb_cloudy_outlined), label: 'Weather'),
-          BottomNavigationBarItem(icon: Icon(Icons.shopping_basket_outlined), label: 'Market'),
-          BottomNavigationBarItem(icon: Icon(Icons.grass_outlined), label: 'Crops'),
-          BottomNavigationBarItem(icon: Icon(Icons.menu_book_outlined), label: 'Learn'),
-        ],
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _buildLanguageItem(String language, String countryCode) {
-    bool isSelected = _selectedLanguage == language;
-    return PopupMenuItem<String>(
-      value: language,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 2),
-        child: Row(
-          children: [
-            Text(
-              countryCode,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                language,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                  color: isSelected ? const Color(0xFF00A34D) : Colors.black87,
-                ),
-              ),
-            ),
-            if (isSelected)
-              const Icon(Icons.check, color: Color(0xFF00A34D), size: 16),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class KnowledgeHubPage extends StatefulWidget {
+class ForumHome extends StatelessWidget {
   final String language;
-  const KnowledgeHubPage({super.key, required this.language});
+  const ForumHome({super.key, required this.language});
 
   @override
-  State<KnowledgeHubPage> createState() => _KnowledgeHubPageState();
+  Widget build(BuildContext context) {
+    return const ForumScreen();
+  }
 }
 
-class _KnowledgeHubPageState extends State<KnowledgeHubPage> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  String _searchText = '';
+class ForumScreen extends StatefulWidget {
+  const ForumScreen({super.key});
 
-  final Map<String, Map<String, String>> _localizedStrings = {
-    'English': {
-      'title': 'Knowledge Hub & Forum',
-      'subtitle': 'Learn from experts and fellow farmers',
-      'search': 'Search topics...',
-    },
-    'සිංහල': {
-      'title': 'දැනුම් මධ්‍යස්ථානය සහ සංසදය',
-      'subtitle': 'විශේෂඥයන් සහ සෙසු ගොවීන්ගෙන් ඉගෙන ගන්න',
-      'search': 'මාතෘකා සොයන්න...',
-    },
-    'தமிழ்': {
-      'title': 'அறிவு மையம் மற்றும் மன்றம்',
-      'subtitle': 'நிபுணர்கள் மற்றும் சக விவசாயிகளிடமிருந்து கற்றுக்கொள்ளுங்கள்',
-      'search': 'தலைப்புகளைத் தேடுங்கள்...',
-    },
-  };
+  @override
+  State<ForumScreen> createState() => _ForumScreenState();
+}
 
+class _ForumScreenState extends State<ForumScreen> {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _contentController = TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+  
+  String _selectedCategory = 'All';
+  String _searchQuery = '';
+  bool _isLoading = false;
+  
+  final List<String> _categories = [
+    'All', 'My Questions', 'Rice', 'Vegetables', 'Pest Control', 'Fertilizer', 'Harvesting'
+  ];
+  
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  User? _currentUser;
+  
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    // _currentUser is handled in build() via AuthProvider
   }
-
+  
   @override
   void dispose() {
-    _tabController.dispose();
+    _titleController.dispose();
+    _contentController.dispose();
+    _commentController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
-
-  String _t(String key) {
-    return _localizedStrings[widget.language]?[key] ?? _localizedStrings['English']![key]!;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        const SizedBox(height: 20),
-        Text(
-          _t('title'),
-          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF004D25)),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 4),
-        Text(
-          _t('subtitle'),
-          style: const TextStyle(color: Color(0xFF004D25), fontSize: 14, fontWeight: FontWeight.bold),
-          textAlign: TextAlign.center,
-        ),
-        const SizedBox(height: 20),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: TextField(
-            onChanged: (value) {
-              setState(() {
-                _searchText = value;
-              });
-            },
-            decoration: InputDecoration(
-              hintText: _t('search'),
-              prefixIcon: const Icon(Icons.search, color: Colors.grey),
-              filled: true,
-              fillColor: const Color(0xFFF5F5F5),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: const EdgeInsets.symmetric(vertical: 0),
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          padding: const EdgeInsets.all(4),
-          decoration: BoxDecoration(
-            color: const Color(0xFFE8ECEF),
-            borderRadius: BorderRadius.circular(30),
-          ),
-          child: TabBar(
-            controller: _tabController,
-            dividerColor: Colors.transparent,
-            indicatorSize: TabBarIndicatorSize.tab,
-            indicator: BoxDecoration(
-              borderRadius: BorderRadius.circular(25),
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            labelColor: Colors.black,
-            unselectedLabelColor: Colors.grey[600],
-            labelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
-            tabs: const [
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.menu_book, size: 18),
-                    SizedBox(width: 8),
-                    Text('Guides'),
-                  ],
-                ),
-              ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.forum_outlined, size: 18),
-                    SizedBox(width: 8),
-                    Text('Forum'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              BestPracticesTab(language: widget.language, searchText: _searchText),
-              CommunityForumTab(language: widget.language, searchText: _searchText),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class BestPracticesTab extends StatefulWidget {
-  final String language;
-  final String searchText;
-  const BestPracticesTab({super.key, required this.language, this.searchText = ''});
-
-  @override
-  State<BestPracticesTab> createState() => _BestPracticesTabState();
-}
-
-class _BestPracticesTabState extends State<BestPracticesTab> {
-  int? _expandedRiceIndex;
-  int? _expandedPestIndex;
-  int? _expandedFertilizerIndex;
-
-  final Map<String, Map<String, dynamic>> _content = const {
-    'English': {
-      'rice': {
-        'title': 'Rice Cultivation Guide',
-        'questions': [
-          {
-            'q': 'What is the best season for planting rice?',
-            'a': 'Yala (April-September) and Maha (October-March) are the two main rice cultivation seasons in Sri Lanka. Choose based on your region\'s rainfall patterns.'
-          },
-          {
-            'q': 'How much water does rice need?',
-            'a': 'Rice fields typically need 5-10 cm of standing water during vegetative stage. Reduce water 2 weeks before harvesting.'
-          },
-          {
-            'q': 'What spacing should I use?',
-            'a': 'Maintain 15cm x 15cm spacing for traditional varieties and 20cm x 20cm for improved varieties to ensure optimal growth.'
-          },
-        ]
-      },
-      'pest': {
-        'title': 'Pest Management',
-        'questions': [
-          {
-            'q': 'How to identify rice pest attacks?',
-            'a': 'Look for damaged leaves, discolored plants, or insects on stems. Common pests include brown plant hopper, stem borer, and leaf folder.'
-          },
-          {
-            'q': 'Organic pest control methods?',
-            'a': 'Use neem oil spray, introduce natural predators, maintain proper field sanitation, and practice crop rotation.'
-          },
-          {
-            'q': 'When to apply pesticides?',
-            'a': 'Apply during early morning or late evening. Follow recommended dosage and observe pre-harvest intervals.'
-          },
-        ]
-      },
-      'fertilizer': {
-        'title': 'Fertilizer Application',
-        'questions': [
-          {
-            'q': 'NPK ratios for vegetables?',
-            'a': 'Leafy vegetables need higher N (20-10-10), fruiting vegetables need balanced NPK (10-10-10), root vegetables need higher K (5-10-10).'
-          },
-          {
-            'q': 'Organic fertilizer options?',
-            'a': 'Compost, cow dung, poultry manure, green manure, and bio-fertilizers are excellent organic options.'
-          },
-          {
-            'q': 'How often to fertilize?',
-            'a': 'Apply basal fertilizer at planting, then split applications every 2-3 weeks based on crop growth stage.'
-          },
-        ]
-      }
-    },
-    'සිංහල': {
-      'rice': {
-        'title': 'වී වගා මාර්ගෝපදේශය',
-        'questions': [
-          {
-            'q': 'වී වැපිරීමට හොඳම කාලය කුමක්ද?',
-            'a': 'යල (අප්‍රේල්-සැප්තැම්බර්) සහ මහ (ඔක්තෝබර්-මාර්තු) ශ්‍රී ලංකාවේ ප්‍රධාන වී වගා කාලයන් වේ. ඔබේ ප්‍රදේශයේ වර්ෂාපතන රටාව අනුව තෝරාගන්න.'
-          },
-          {
-            'q': 'වී වලට කොපමණ ජලය අවශ්‍යද?',
-            'a': 'වර්ධන අවධියේදී වී කුඹුරුවලට සාමාන්‍යයෙන් සෙන්ටිමීටර 5-10 ක රැඳී පවතින ජලය අවශ්‍ය වේ. අස්වනු නෙලීමට සති 2 කට පෙර ජලය අඩු කරන්න.'
-          },
-          {
-            'q': 'මම භාවිතා කළ යුතු පරතරය කුමක්ද?',
-            'a': 'ප්‍රශස්ත වර්ධනයක් සහතික කිරීම සඳහා සාම්ප්‍රදායික ප්‍රභේද සඳහා සෙන්ටිමීටර 15x15 පරතරය සහ වැඩිදියුණු කළ ප්‍රභේද සඳහා සෙන්ටිමීටර 20x20 පරතරය පවත්වා ගන්න.'
-          },
-        ]
-      },
-      'pest': {
-        'title': 'පළිබෝධ කළමනාකරණය',
-        'questions': [
-          {
-            'q': 'වී පළිබෝධ හානි හඳුනා ගන්නේ කෙසේද?',
-            'a': 'හානි වූ පත්‍ර, අවපැහැ ගැන්වූ ශාක හෝ කඳේ සිටින කෘමීන් දෙස බලන්න. දුඹුරු පැල මැක්කා, පුරුක් පණුවා සහ කොළ හකුලන පණුවා පොදු පළිබෝධකයන් වේ.'
-          },
-          {
-            'q': 'කාබනික පළිබෝධ පාලන ක්‍රම?',
-            'a': 'කොහොඹ තෙල් ඉසින භාවිතා කරන්න, ස්වභාවික විලෝපිකයන් හඳුන්වා දෙන්න, නිසි ක්ෂේත්‍ර සනීපාරක්ෂාව පවත්වා ගන්න, සහ බෝග මාරු කිරීම පුරුදු කරන්න.'
-          },
-          {
-            'q': 'කෘමිනාශක යෙදිය යුත්තේ කවදාද?',
-            'a': 'උදේ පාන්දර හෝ සවස් වරුවේ යොදන්න. නිර්දේශිත මාත්‍රාව අනුභව කරන්න සහ අස්වැන්න නෙලීමට පෙර කාල පරතරයන් නිරීක්ෂණය කරන්න.'
-          },
-        ]
-      },
-      'fertilizer': {
-        'title': 'පොහොර යෙදීම',
-        'questions': [
-          {
-            'q': 'එළවළු සඳහා NPK අනුපාත?',
-            'a': 'පත්‍ර සහිත එළවළු සඳහා වැඩි N (20-10-10), ගෙඩි එළවළු සඳහා සමබර NPK (10-10-10), අල බෝග සඳහා වැඩි K (5-10-10) අවශ්‍ය වේ.'
-          },
-          {
-            'q': 'කාබනික පොහොර විකල්ප?',
-            'a': 'කොම්පෝස්ට්, ගොම, කුකුළු පොහොර, කොළ පොහොර සහ ජෛව පොහොර විශිෂ්ට කාබනික විකල්ප වේ.'
-          },
-          {
-            'q': 'කොපමණ වාරයක් පොහොර යෙදිය යුතුද?',
-            'a': 'සිටුවීමේදී මූලික පොහොර යොදන්න, ඉන්පසු බෝග වර්ධන අවධිය මත පදනම්ව සෑම සති 2-3 කට වරක් කොටස් වශයෙන් යොදන්න.'
-          },
-        ]
-      }
-    },
-    'தமிழ்': {
-      'rice': {
-        'title': 'நெல் சாகுபடி வழிகாட்டி',
-        'questions': [
-          {
-            'q': 'நெல் நடவு செய்ய சிறந்த பருவம் எது?',
-            'a': 'இலங்கையில் யால (ஏப்ரல்-செப்டம்பர்) மற்றும் மஹா (அக்டோபர்-மார்ச்) ஆகிய இரண்டு முக்கிய நெல் சாகுபடி பருவங்கள் உள்ளன. உங்கள் பிராந்தியத்தின் மழைவீழ்ச்சி முறைகளின் அடிப்படையில் தேர்வு செய்யவும்.'
-          },
-          {
-            'q': 'நெல்லுக்கு எவ்வளவு தண்ணீர் தேவை?',
-            'a': 'வளர்ச்சி நிலையில் நெல் வயல்களில் பொதுவாக 5-10 செமீ தேங்கி நிற்கும் நீர் தேவைப்படுகிறது. அறுவடைக்கு 2 வாரங்களுக்கு முன்பு தண்ணீரைக் குறைக்கவும்.'
-          },
-          {
-            'q': 'நான் என்ன இடைவெளியைப் பயன்படுத்த வேண்டும்?',
-            'a': 'உகந்த வளர்ச்சியை உறுதிப்படுத்த பாரம்பரிய ரகங்களுக்கு 15செமீ x 15செமீ இடைவெளியையும், மேம்படுத்தப்பட்ட ரகங்களுக்கு 20செமீ x 20செமீ இடைவெளியையும் பராமரிக்கவும்.'
-          },
-        ]
-      },
-      'pest': {
-        'title': 'பூச்சி மேலாண்மை',
-        'questions': [
-          {
-            'q': 'நெல் பூச்சித் தாக்குதல்களை எவ்வாறு கண்டறிவது?',
-            'a': 'சேதமடைந்த இலைகள், நிறமாற்றம் அடைந்த செடிகள் அல்லது தண்டுகளில் உள்ள பூச்சிகளைக் கவனியுங்கள். புகையான், தண்டு துளைப்பான் மற்றும் இலை சுருட்டி ஆகியவை பொதுவான பூச்சிகளாகும்.'
-          },
-          {
-            'q': 'இயற்கை பூச்சி கட்டுப்பாடு முறைகள்?',
-            'a': 'வேப்ப எண்ணெய் தெளிப்பைப் பயன்படுத்துங்கள், இயற்கை எதிரிகளை அறிமுகப்படுத்துங்கள், முறையான வயல் சுகாதாரத்தைப் பேணுங்கள் மற்றும் பயிர் சுழற்சியைப் பயிற்சி செய்யுங்கள்.'
-          },
-          {
-            'q': 'பூச்சிக்கொல்லிகளை எப்போது பயன்படுத்துவது?',
-            'a': 'அதிகாலை அல்லது மாலை வேளையில் பயன்படுத்துங்கள். பரிந்துரைக்கப்பட்ட அளவைப் பின்பற்றுங்கள் மற்றும் அறுவடைக்கு முந்தைய இடைவெளிகளைக் கவனியுங்கள்.'
-          },
-        ]
-      },
-      'fertilizer': {
-        'title': 'உரம் இடுதல்',
-        'questions': [
-          {
-            'q': 'காயறிகளுக்கான NPK விகிதங்கள்?',
-            'a': 'இலை காயறிகளுக்கு அதிக N (20-10-10), காய் காயறிகளுக்கு சமநிலையான NPK (10-10-10), கிழங்கு பயிர்களுக்கு அதிக K (5-10-10) தேவைப்படுகிறது.'
-          },
-          {
-            'q': 'இயற்கை உர விருப்பங்கள்?',
-            'a': 'உரம், மாட்டு சாணம், கோழி எரு, பசுந்தாள் உரம் மற்றும் உயிர் உரங்கள் சிறந்த இயற்கை உர விருப்பங்களாகும்.'
-          },
-          {
-            'q': 'எவ்வளவு அடிக்கடி உரம் இட வேண்டும்?',
-            'a': 'நடவு செய்யும் போது அடிப்படை உரத்தைப் பயன்படுத்துங்கள், பின்னர் பயிர் வளர்ச்சி நிலையின் அடிப்படையில் ஒவ்வொரு 2-3 வாரங்களுக்கு பிரித்து உரமிடவும்.'
-          },
-        ]
-      }
-    }
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    final langContent = _content[widget.language] ?? _content['English']!;
-    final query = widget.searchText.toLowerCase();
-
-    List<Widget> children = [];
-
-    // Rice
-    final riceVisible = langContent['rice']['title'].toLowerCase().contains(query) ||
-        langContent['rice']['questions'].any((q) =>
-        q['q'].toLowerCase().contains(query) || q['a'].toLowerCase().contains(query));
-    if (riceVisible) {
-      children.add(_buildExpansionCard(
-        langContent['rice']['title'],
-        List.generate(langContent['rice']['questions'].length, (index) {
-          final qData = langContent['rice']['questions'][index];
-          final qVisible = qData['q'].toLowerCase().contains(query) || qData['a'].toLowerCase().contains(query);
-          if (!qVisible && !langContent['rice']['title'].toLowerCase().contains(query)) return const SizedBox.shrink();
-          return _buildExpansionTile(
-            index,
-            qData['q'],
-            qData['a'],
-            _expandedRiceIndex,
-                (isOpen) => setState(() => _expandedRiceIndex = isOpen ? index : null),
-          );
-        }),
-      ));
-      children.add(const SizedBox(height: 16));
-    }
-
-    // Pest
-    final pestVisible = langContent['pest']['title'].toLowerCase().contains(query) ||
-        langContent['pest']['questions'].any((q) =>
-        q['q'].toLowerCase().contains(query) || q['a'].toLowerCase().contains(query));
-    if (pestVisible) {
-      children.add(_buildExpansionCard(
-        langContent['pest']['title'],
-        List.generate(langContent['pest']['questions'].length, (index) {
-          final qData = langContent['pest']['questions'][index];
-          final qVisible = qData['q'].toLowerCase().contains(query) || qData['a'].toLowerCase().contains(query);
-          if (!qVisible && !langContent['pest']['title'].toLowerCase().contains(query)) return const SizedBox.shrink();
-          return _buildExpansionTile(
-            index,
-            qData['q'],
-            qData['a'],
-            _expandedPestIndex,
-                (isOpen) => setState(() => _expandedPestIndex = isOpen ? index : null),
-          );
-        }),
-      ));
-      children.add(const SizedBox(height: 16));
-    }
-
-    // Fertilizer
-    final fertilizerVisible = langContent['fertilizer']['title'].toLowerCase().contains(query) ||
-        langContent['fertilizer']['questions'].any((q) =>
-        q['q'].toLowerCase().contains(query) || q['a'].toLowerCase().contains(query));
-    if (fertilizerVisible) {
-      children.add(_buildExpansionCard(
-        langContent['fertilizer']['title'],
-        List.generate(langContent['fertilizer']['questions'].length, (index) {
-          final qData = langContent['fertilizer']['questions'][index];
-          final qVisible = qData['q'].toLowerCase().contains(query) || qData['a'].toLowerCase().contains(query);
-          if (!qVisible && !langContent['fertilizer']['title'].toLowerCase().contains(query)) return const SizedBox.shrink();
-          return _buildExpansionTile(
-            index,
-            qData['q'],
-            qData['a'],
-            _expandedFertilizerIndex,
-                (isOpen) => setState(() => _expandedFertilizerIndex = isOpen ? index : null),
-          );
-        }),
-      ));
-    }
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: children,
-    );
-  }
-
-  Widget _buildExpansionCard(String title, List<Widget> children) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 8),
-            child: Row(
-              children: [
-                const Icon(Icons.menu_book, color: Color(0xFF00A34D), size: 22),
-                const SizedBox(width: 10),
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF00A34D)),
-                ),
-              ],
-            ),
-          ),
-          ...children,
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildExpansionTile(int index, String title, String content, int? expandedIndex, Function(bool) onExpansionChanged) {
-    return Theme(
-      data: ThemeData().copyWith(dividerColor: Colors.transparent),
-      child: ExpansionTile(
-        key: GlobalKey(),
-        initiallyExpanded: expandedIndex == index,
-        onExpansionChanged: onExpansionChanged,
-        title: Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black87)),
-        iconColor: Colors.grey,
-        collapsedIconColor: Colors.grey,
-        childrenPadding: const EdgeInsets.symmetric(horizontal: 16),
-        expandedAlignment: Alignment.topLeft,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Text(
-              content,
-              style: TextStyle(color: Colors.grey[700], fontSize: 13, height: 1.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class Discussion {
-  final String author;
-  final DateTime createdAt;
-  final Map<String, String> title;
-  final Map<String, String> content;
-  int repliesCount;
-  int likesCount;
-  bool isLiked;
-  final List<Map<String, dynamic>> comments;
-
-  Discussion({
-    required this.author,
-    required this.createdAt,
-    required this.title,
-    required this.content,
-    required this.repliesCount,
-    required this.likesCount,
-    this.isLiked = false,
-    required this.comments,
-  });
-}
-
-class CommunityForumTab extends StatefulWidget {
-  final String language;
-  final String searchText;
-  const CommunityForumTab({super.key, required this.language, this.searchText = ''});
-
-  @override
-  State<CommunityForumTab> createState() => _CommunityForumTabState();
-}
-
-class _CommunityForumTabState extends State<CommunityForumTab> {
-  final TextEditingController _questionController = TextEditingController();
-  final TextEditingController _detailsController = TextEditingController();
-
-  final List<Discussion> _discussions = [
-    Discussion(
-      author: 'Nimal Perera',
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      title: {
-        'English': 'Best time to harvest paddy in Anuradhapura?',
-        'සිංහල': 'අනුරාධපුරයේ සහල් අස්වනු නෙලීමට හොඳම කාලය?',
-        'தமிழ்': 'அனுராதபுரத்தில் நெல் அறுவடைக்கு சிறந்த நேரம்?'
-      },
-      content: {
-        'English': 'I planted BG 300 variety 3 months ago. When is the optimal time to harvest?',
-        'සිංහල': 'මම මාස 3කට පෙර BG 300 ප්‍රභේදය සිටුවා ඇත්තෙමි. අස්වනු නෙලීමට ප්‍රශස්ත කාලය කවද්ද?',
-        'தமிழ்': 'நான் 3 மாதங்களுக்கு முன்பு BG 300 ரகத்தை நட்டேன். அறுவடைக்கு உகந்த நேரம் எப்போது?'
-      },
-      repliesCount: 12,
-      likesCount: 8,
-      comments: [{'text': 'Harvest when 80-85% of grains are straw-colored.', 'time': DateTime.now().subtract(const Duration(minutes: 30))}],
-    ),
-    Discussion(
-      author: 'Kamala Fernando',
-      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
-      title: {
-        'English': 'Organic fertilizer for tomato plants?',
-        'සිංහල': 'තක්කාලි පැල සඳහා කාබනික පොහොර?',
-        'தமிழ்': 'தக்காளி செடிகளுக்கு கரிம உரம்?'
-      },
-      content: {
-        'English': 'Looking for recommendations on organic fertilizers that work well for tomatoes in Sri Lankan climate.',
-        'සිංහල': 'ශ්‍රී ලංකා දේශගුණය තුළ තක්කාලි සඳහා හොඳින් ක්‍රියා කරන කාබනික පොහොර පිළිබඳ නිර්දේශ සොයමි.',
-        'தமிழ்': 'இலங்கை காலடியில் தக்காளிக்கு நன்றாக வேலை செய்யும் கரிம உரங்கள் பற்றிய பரிந்துரைகளைத் தேடுகிறேன்.'
-      },
-      repliesCount: 7,
-      likesCount: 15,
-      comments: [{'text': 'Try compost mixed with bone meal.', 'time': DateTime.now().subtract(const Duration(hours: 1))}],
-    ),
-    Discussion(
-      author: 'Sunil Silva',
-      createdAt: DateTime.now().subtract(const Duration(days: 1)),
-      title: {
-        'English': 'Dealing with leaf curl in chili plants',
-        'සිංහල': 'මිරිස් පැලවල කොළ කරකැවීම සමඟ කටයුතු කිරීම',
-        'தமிழ்': 'மிளகாய் செடிகளில் இலை சுருள் கையாளுதல்'
-      },
-      content: {
-        'English': 'My chili plants are showing leaf curl symptoms. What are the effective treatment methods?',
-        'සිංහල': 'මගේ මිරිස් පැල කොළ කරකැවීමේ රෝග ලක්ෂණ පෙන්වයි. ඵලදායී ප්‍රතිකාර ක්‍රම මොනවාද?',
-        'தமிழ்': 'என் மிளகாய் செடிகள் இலை சுருள் அறிகுறிகளைக் காட்டுகின்றன. பயனுள்ள சிகிச்சை முறைகள் என்ன?'
-      },
-      repliesCount: 9,
-      likesCount: 11,
-      comments: [{'text': 'Check for mites or thrips under the leaves.', 'time': DateTime.now().subtract(const Duration(hours: 12))}],
-    ),
-  ];
-
-  final Map<String, Map<String, String>> _forumStrings = const {
-    'English': {
-      'askTitle': 'Ask a Question',
-      'yourQuestion': 'Your Question',
-      'questionDetails': 'Question Details',
-      'postButton': 'Post Question',
-      'recentDiscussions': 'Recent Discussions',
-      'replies': 'replies',
-      'likes': 'likes',
-      'addComment': 'Add a comment...',
-      'comment': 'Comment',
-      'justNow': 'Just now',
-      'minutesAgo': 'minutes ago',
-      'hoursAgo': 'hours ago',
-      'daysAgo': 'days ago',
-      'ago': 'ago'
-    },
-    'සිංහල': {
-      'askTitle': 'ප්‍රශ්නයක් අසන්න',
-      'yourQuestion': 'ඔබේ ප්‍රශ්නය',
-      'questionDetails': 'ප්‍රශ්නයේ විස්තර',
-      'postButton': 'ප්‍රශ්නය යොමු කරන්න',
-      'recentDiscussions': 'මෑත සාකච්ඡා',
-      'replies': 'පිළිතුරු',
-      'likes': 'කැමැත්ත',
-      'addComment': 'අදහසක් එක් කරන්න...',
-      'comment': 'අදහස',
-      'justNow': 'දැන්',
-      'minutesAgo': 'මිනිත්තු වලට පෙර',
-      'hoursAgo': 'පැය වලට පෙර',
-      'daysAgo': 'දින වලට පෙර',
-      'ago': 'පෙර'
-    },
-    'தமிழ்': {
-      'askTitle': 'கேள்வி கேளுங்கள்',
-      'yourQuestion': 'உங்கள் கேள்வி',
-      'questionDetails': 'கேள்வி விவரங்கள்',
-      'postButton': 'கேள்வியை இடுகையிடவும்',
-      'recentDiscussions': 'சமீபத்திய விவாதங்கள்',
-      'replies': 'பதில்கள்',
-      'likes': 'விரும்புகிறது',
-      'addComment': 'ஒரு கருத்தைச் சேர்க்கவும்...',
-      'comment': 'கருத்து',
-      'justNow': 'இப்போது',
-      'minutesAgo': 'நிமிடங்களுக்கு முன்பு',
-      'hoursAgo': 'மணிநேரங்களுக்கு முன்பு',
-      'daysAgo': 'நாட்களுக்கு முன்பு',
-      'ago': 'முன்பு'
-    }
-  };
-
-  String _formatTimeAgo(DateTime dateTime) {
-    final s = _forumStrings[widget.language] ?? _forumStrings['English']!;
-    final diff = DateTime.now().difference(dateTime);
-
-    if (diff.inSeconds < 60) {
-      return s['justNow']!;
-    } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes} ${s['minutesAgo']}';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours} ${s['hoursAgo']}';
+  
+  String _formatTimeAgo(Timestamp? timestamp) {
+    if (timestamp == null) return 'Recently';
+    final dateTime = timestamp.toDate();
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+    
+    if (difference.inDays > 7) {
+      return '${(difference.inDays / 7).floor()} weeks ago';
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays} days ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hours ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minutes ago';
     } else {
-      return '${diff.inDays} ${s['daysAgo']}';
+      return 'Just now';
     }
   }
-
-  void _postQuestion() {
-    if (_questionController.text.isNotEmpty) {
-      setState(() {
-        _discussions.insert(0, Discussion(
-          author: 'Me',
-          createdAt: DateTime.now(),
-          title: {'English': _questionController.text, 'සිංහල': _questionController.text, 'தமிழ்': _questionController.text},
-          content: {'English': _detailsController.text, 'සිංහල': _detailsController.text, 'தமிழ்': _detailsController.text},
-          repliesCount: 0,
-          likesCount: 0,
-          comments: [],
-        ));
-        _questionController.clear();
-        _detailsController.clear();
+  
+  String _getInitial(String? name) {
+    if (name == null || name.trim().isEmpty) return '?';
+    return name.trim()[0].toUpperCase();
+  }
+  
+  // Removed _showLoginPrompt, using LoginRequiredDialog instead
+  
+  Future<void> _createPost() async {
+    if (_titleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a title')),
+      );
+      return;
+    }
+    
+    final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
+    if (authProvider.isGuest || authProvider.user == null) {
+      LoginRequiredDialog.show(context: context, action: 'create a post');
+      return;
+    }
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      await _firestore.collection('forum_posts').add({
+        'title': _titleController.text.trim(),
+        'content': _contentController.text.trim(),
+        'category': _selectedCategory == 'All' ? 'General' : _selectedCategory,
+        'authorId': authProvider.user!.uid,
+        'authorName': authProvider.user!.displayName ?? 'Anonymous Farmer',
+        'likes': 0,
+        'replies': 0,
+        'views': 0,
+        'likedBy': [],
+        'timestamp': FieldValue.serverTimestamp(),
       });
+      
+      _titleController.clear();
+      _contentController.clear();
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post created successfully!')),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
     }
+    
+    setState(() => _isLoading = false);
   }
 
-  void _toggleLike(int index) {
-    setState(() {
-      if (_discussions[index].isLiked) {
-        _discussions[index].likesCount--;
-        _discussions[index].isLiked = false;
-      } else {
-        _discussions[index].likesCount++;
-        _discussions[index].isLiked = true;
+  Future<void> _updatePost(String postId) async {
+    if (_titleController.text.trim().isEmpty) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await _firestore.collection('forum_posts').doc(postId).update({
+        'title': _titleController.text.trim(),
+        'content': _contentController.text.trim(),
+        'category': _selectedCategory == 'All' ? 'General' : _selectedCategory,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Post updated successfully!')),
+        );
+        Navigator.pop(context);
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+
+    setState(() => _isLoading = false);
+  }
+
+  Future<void> _deletePost(String postId) async {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Post'),
+        content: const Text('Are you sure you want to delete this post?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              setState(() => _isLoading = true);
+              try {
+                await _firestore.collection('forum_posts').doc(postId).delete();
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Post deleted successfully!')),
+                );
+              } catch (e) {
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+                );
+              }
+              setState(() => _isLoading = false);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _addComment(String postId) async {
+    if (_commentController.text.trim().isEmpty) return;
+    
+    final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
+    if (authProvider.isGuest || authProvider.user == null) {
+      LoginRequiredDialog.show(context: context, action: 'comment on posts');
+      return;
+    }
+    
+    try {
+      await _firestore
+          .collection('forum_posts')
+          .doc(postId)
+          .collection('comments')
+          .add({
+        'content': _commentController.text.trim(),
+        'authorId': authProvider.user!.uid,
+        'authorName': authProvider.user!.displayName ?? 'Anonymous',
+        'timestamp': FieldValue.serverTimestamp(),
+      });
+      
+      await _firestore.collection('forum_posts').doc(postId).update({
+        'replies': FieldValue.increment(1),
+      });
+      
+      _commentController.clear();
+    } catch (e) {
+      debugPrint('Error adding comment: $e');
+    }
+  }
+  
+  Future<void> _toggleLike(String postId, int currentLikes, List<dynamic> likedBy) async {
+    final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
+    if (authProvider.isGuest || authProvider.user == null) {
+      LoginRequiredDialog.show(context: context, action: 'like posts');
+      return;
+    }
+    
+    final userId = authProvider.user!.uid;
+    final hasLiked = likedBy.contains(userId);
+    
+    await _firestore.collection('forum_posts').doc(postId).update({
+      'likes': hasLiked ? currentLikes - 1 : currentLikes + 1,
+      'likedBy': hasLiked 
+          ? FieldValue.arrayRemove([userId]) 
+          : FieldValue.arrayUnion([userId]),
     });
   }
-
-  void _showComments(int index) {
+  
+  void _showCreatePostDialog({DocumentSnapshot? postToEdit}) {
+    
+    if (postToEdit != null) {
+      final data = postToEdit.data() as Map<String, dynamic>;
+      _titleController.text = data['title'] ?? '';
+      _contentController.text = data['content'] ?? '';
+      if (_categories.contains(data['category'])) {
+        _selectedCategory = data['category'];
+      }
+    } else {
+      _titleController.clear();
+      _contentController.clear();
+    }
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        String dialogCategory = _categories[1];
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(postToEdit != null ? 'Edit Post' : 'Create New Post'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: dialogCategory,
+                      items: _categories.where((c) => c != 'All').map((category) {
+                        return DropdownMenuItem(value: category, child: Text(category));
+                      }).toList(),
+                      onChanged: (value) {
+                        setDialogState(() => dialogCategory = value!);
+                      },
+                      decoration: const InputDecoration(
+                        labelText: 'Category',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _titleController,
+                      keyboardType: TextInputType.text,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.next,
+                      decoration: const InputDecoration(
+                        hintText: 'Title',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: null,
+                      minLines: 1,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _contentController,
+                      keyboardType: TextInputType.multiline,
+                      textCapitalization: TextCapitalization.sentences,
+                      textInputAction: TextInputAction.newline,
+                      decoration: const InputDecoration(
+                        hintText: 'Content',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 5,
+                      minLines: 3,
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: _isLoading ? null : () {
+                    if (postToEdit != null) {
+                      _updatePost(postToEdit.id);
+                    } else {
+                      _createPost();
+                    }
+                  },
+                  child: _isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(postToEdit != null ? 'Save Changes' : 'Post'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+  
+  void _showCommentsBottomSheet(String postId, String postTitle) {
+    _commentController.clear();
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.6,
+        initialChildSize: 0.7,
         minChildSize: 0.4,
         maxChildSize: 0.9,
-        builder: (_, scrollController) => Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.all(16),
-          child: Column(
+        expand: false,
+        builder: (context, scrollController) {
+          return Column(
             children: [
-              Text(_forumStrings[widget.language]!['comment']!, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const Divider(),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Colors.grey, width: 0.5)),
+                ),
+                child: Text(
+                  postTitle,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ),
               Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  itemCount: _discussions[index].comments.length,
-                  itemBuilder: (context, cIndex) {
-                    final comment = _discussions[index].comments[cIndex];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const CircleAvatar(radius: 12, child: Icon(Icons.person, size: 14)),
-                          const SizedBox(width: 8),
-                          Expanded(child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
-                                child: Text(comment['text']),
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.only(left: 4, top: 2),
-                                child: Text(_formatTimeAgo(comment['time']), style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                              ),
-                            ],
-                          )),
-                        ],
-                      ),
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: _firestore
+                      .collection('forum_posts')
+                      .doc(postId)
+                      .collection('comments')
+                      .orderBy('timestamp', descending: true)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    
+                    final comments = snapshot.data!.docs;
+                    
+                    if (comments.isEmpty) {
+                      return const Center(
+                        child: Text('No comments yet. Be the first to comment!'),
+                      );
+                    }
+                    
+                    return ListView.builder(
+                      controller: scrollController,
+                      itemCount: comments.length,
+                      itemBuilder: (context, index) {
+                        final comment = comments[index].data() as Map<String, dynamic>;
+                        return ListTile(
+                          leading: CircleAvatar(
+                            child: Text(_getInitial(comment['authorName'])),
+                          ),
+                          title: Text(
+                            comment['authorName'],
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(comment['content']),
+                          trailing: Text(
+                            _formatTimeAgo(comment['timestamp']),
+                            style: const TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
+                        );
+                      },
                     );
                   },
                 ),
               ),
-              Padding(
-                padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: _forumStrings[widget.language]!['addComment'],
-                    suffixIcon: IconButton(
-                      icon: const Icon(Icons.send, color: Color(0xFF00A34D)),
-                      onPressed: () {},
-                    ),
-                  ),
-                  onSubmitted: (val) {
-                    if (val.isNotEmpty) {
-                      setState(() {
-                        _discussions[index].comments.add({'text': val, 'time': DateTime.now()});
-                        _discussions[index].repliesCount++;
-                      });
-                      Navigator.pop(context);
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final s = _forumStrings[widget.language] ?? _forumStrings['English']!;
-    final query = widget.searchText.toLowerCase();
-
-    final filteredDiscussions = _discussions.where((disc) {
-      final title = (disc.title[widget.language] ?? disc.title['English']!).toLowerCase();
-      final content = (disc.content[widget.language] ?? disc.content['English']!).toLowerCase();
-      return title.contains(query) || content.contains(query);
-    }).toList();
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        if (query.isEmpty) ...[
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFD1FAE5)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(s['askTitle']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF065F46))),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _questionController,
-                  decoration: InputDecoration(
-                    hintText: s['yourQuestion'],
-                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                    filled: true,
-                    fillColor: const Color(0xFFF9FAFB),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _detailsController,
-                  maxLines: 3,
-                  decoration: InputDecoration(
-                    hintText: s['questionDetails'],
-                    hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14),
-                    filled: true,
-                    fillColor: const Color(0xFFF9FAFB),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.all(16),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: _postQuestion,
-                  icon: const Icon(Icons.send_rounded, size: 18),
-                  label: Text(s['postButton']!, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF00A34D),
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-        ],
-        Text(s['recentDiscussions']!, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF1F2937))),
-        const SizedBox(height: 16),
-        ...List.generate(filteredDiscussions.length, (index) {
-          final originalIndex = _discussions.indexOf(filteredDiscussions[index]);
-          return _buildDiscussionCard(originalIndex, s);
-        }),
-      ],
-    );
-  }
-
-  Widget _buildDiscussionCard(int index, Map<String, String> s) {
-    final disc = _discussions[index];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.withValues(alpha: 0.15)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
               Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(10),
+                padding: EdgeInsets.only(
+                  left: 16,
+                  right: 16,
+                  bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+                  top: 8,
                 ),
-                child: const Icon(Icons.person_outline, color: Color(0xFF22C55E), size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(color: Colors.grey.withValues(alpha: 0.2), blurRadius: 8),
+                  ],
+                ),
+                child: Row(
                   children: [
-                    Text(
-                      disc.title[widget.language] ?? disc.title['English']!,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Color(0xFF1F2937)),
+                    Expanded(
+                      child: TextField(
+                        controller: _commentController,
+                        decoration: InputDecoration(
+                          hintText: 'Write a comment...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        ),
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${disc.author} • ${_formatTimeAgo(disc.createdAt)}',
-                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.send, color: Colors.green),
+                      onPressed: () => _addComment(postId),
                     ),
                   ],
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            disc.content[widget.language] ?? disc.content['English']!,
-            style: TextStyle(color: Colors.grey[700], fontSize: 13, height: 1.5),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => _showComments(index),
-                child: _buildInteractionItem(Icons.chat_bubble_outline, '${disc.repliesCount} ${s['replies']}'),
-              ),
-              const SizedBox(width: 20),
-              GestureDetector(
-                onTap: () => _toggleLike(index),
-                child: _buildInteractionItem(
-                  disc.isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                  '${disc.likesCount} ${s['likes']}',
-                  color: disc.isLiked ? const Color(0xFF00A34D) : null,
+          );
+        },
+      ),
+    );
+  }
+  
+  @override
+  Widget build(BuildContext context) {
+    final authProvider = Provider.of<app_auth.AuthProvider>(context);
+    _currentUser = authProvider.user;
+    
+    return Scaffold(
+      backgroundColor: const Color(0xFFF1F8F5),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF1B5E20), Color(0xFF2E7D32)],
                 ),
+                borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
               ),
-            ],
-          ),
-        ],
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.forum, color: Colors.white),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Farmers Forum',
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                            Text(
+                              'Connect with fellow farmers',
+                              style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.8)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (_currentUser != null)
+                        CircleAvatar(
+                          radius: 16,
+                          child: Text(_getInitial(_currentUser!.displayName)),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  // Search Bar
+                  TextField(
+                    onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
+                    decoration: InputDecoration(
+                      hintText: 'Search discussions...',
+                      prefixIcon: const Icon(Icons.search, color: Colors.white70),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.15),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+            
+            // Categories
+            SizedBox(
+              height: 50,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _categories.length,
+                itemBuilder: (context, index) {
+                  final category = _categories[index];
+                  final isSelected = _selectedCategory == category;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: FilterChip(
+                      label: Text(category),
+                      selected: isSelected,
+                      onSelected: (selected) {
+                        setState(() {
+                          _selectedCategory = selected ? category : 'All';
+                        });
+                      },
+                      backgroundColor: Colors.white,
+                      selectedColor: Colors.green[100],
+                    ),
+                  );
+                },
+              ),
+            ),
+            
+            // Posts List
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: _firestore
+                    .collection('forum_posts')
+                    .orderBy('timestamp', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  }
+                  
+                  if (!snapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  
+                  var posts = snapshot.data!.docs;
+                  
+                  // Filter by category
+                  if (_selectedCategory == 'My Questions') {
+                    posts = posts.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return data['authorId'] == _currentUser?.uid;
+                    }).toList();
+                  } else if (_selectedCategory != 'All') {
+                    posts = posts.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      return data['category'] == _selectedCategory;
+                    }).toList();
+                  }
+                  
+                  // Filter by search
+                  if (_searchQuery.isNotEmpty) {
+                    posts = posts.where((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final title = data['title']?.toLowerCase() ?? '';
+                      final content = data['content']?.toLowerCase() ?? '';
+                      return title.contains(_searchQuery) || content.contains(_searchQuery);
+                    }).toList();
+                  }
+                  
+                  if (posts.isEmpty) {
+                    return const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.forum_outlined, size: 64, color: Colors.grey),
+                          SizedBox(height: 16),
+                          Text('No posts found'),
+                          SizedBox(height: 8),
+                          Text('Be the first to ask a question!'),
+                        ],
+                      ),
+                    );
+                  }
+                  
+                  return ListView.builder(
+                    padding: const EdgeInsets.all(12),
+                    itemCount: posts.length,
+                    itemBuilder: (context, index) {
+                      final post = posts[index].data() as Map<String, dynamic>;
+                      final postId = posts[index].id;
+                      final timestamp = post['timestamp'] as Timestamp?;
+                      
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        child: InkWell(
+                          onTap: () => _showCommentsBottomSheet(postId, post['title']),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 16,
+                                      child: Text(_getInitial(post['authorName'])),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            post['authorName'],
+                                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                          ),
+                                          Text(
+                                            _formatTimeAgo(timestamp),
+                                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.green[50],
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: Colors.green[200]!),
+                                      ),
+                                      child: Text(
+                                        post['category'] ?? 'General',
+                                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green[700]),
+                                      ),
+                                    ),
+                                    if (post['authorId'] == _currentUser?.uid)
+                                      PopupMenuButton<String>(
+                                        icon: const Icon(Icons.more_vert, size: 20, color: Colors.grey),
+                                        onSelected: (value) {
+                                          if (value == 'edit') {
+                                            _showCreatePostDialog(postToEdit: posts[index]);
+                                          } else if (value == 'delete') {
+                                            _deletePost(postId);
+                                          }
+                                        },
+                                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                          const PopupMenuItem<String>(
+                                            value: 'edit',
+                                            child: ListTile(
+                                              leading: Icon(Icons.edit, size: 20),
+                                              title: Text('Edit'),
+                                              contentPadding: EdgeInsets.zero,
+                                            ),
+                                          ),
+                                          const PopupMenuItem<String>(
+                                            value: 'delete',
+                                            child: ListTile(
+                                              leading: Icon(Icons.delete, color: Colors.red, size: 20),
+                                              title: Text('Delete', style: TextStyle(color: Colors.red)),
+                                              contentPadding: EdgeInsets.zero,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  post['title'],
+                                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, height: 1.3),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  post['content'],
+                                  style: TextStyle(fontSize: 14, color: Colors.grey[800], height: 1.4),
+                                  maxLines: 3,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 16),
+                                const Divider(height: 1),
+                                const SizedBox(height: 8),
+                                Row(
+                                  children: [
+                                    _buildStatCounter(
+                                      icon: (post['likedBy'] as List?)?.contains(_currentUser?.uid) == true
+                                          ? Icons.thumb_up
+                                          : Icons.thumb_up_outlined,
+                                      count: post['likes'] ?? 0,
+                                      color: (post['likedBy'] as List?)?.contains(_currentUser?.uid) == true
+                                          ? Colors.blue
+                                          : Colors.grey[600]!,
+                                      onTap: () => _toggleLike(postId, post['likes'] ?? 0, post['likedBy'] ?? []),
+                                    ),
+                                    const SizedBox(width: 24),
+                                    _buildStatCounter(
+                                      icon: Icons.chat_bubble_outline,
+                                      count: post['replies'] ?? 0,
+                                      color: Colors.grey[600]!,
+                                    ),
+                                    const Spacer(),
+                                    _buildStatCounter(
+                                      icon: Icons.remove_red_eye_outlined,
+                                      count: post['views'] ?? 0,
+                                      color: Colors.grey[600]!,
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+            
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(color: Colors.grey.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, -2)),
+                ],
+              ),
+              child: FloatingActionButton.extended(
+                onPressed: () {
+                  final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
+                  if (authProvider.isGuest || authProvider.user == null) {
+                    LoginRequiredDialog.show(context: context, action: 'ask a question');
+                    return;
+                  }
+                  _showCreatePostDialog();
+                },
+                icon: const Icon(Icons.add),
+                label: const Text('Ask a Question'),
+                backgroundColor: const Color(0xFF1B5E20),
+                foregroundColor: Colors.white,
+                elevation: 0,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildInteractionItem(IconData icon, String text, {Color? color}) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: color ?? Colors.grey[500]),
-        const SizedBox(width: 6),
-        Text(text, style: TextStyle(color: color ?? Colors.grey[600], fontSize: 12, fontWeight: FontWeight.w500)),
-      ],
+  Widget _buildStatCounter({required IconData icon, required int count, required Color color, VoidCallback? onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: Row(
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 6),
+            Text(
+              count.toString(),
+              style: TextStyle(
+                fontSize: 14,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

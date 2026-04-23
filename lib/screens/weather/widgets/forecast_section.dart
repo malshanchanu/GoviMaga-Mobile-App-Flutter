@@ -5,7 +5,27 @@ import 'shared_components.dart';
 
 class Forecast5DaySection extends StatelessWidget {
   final List<dynamic> forecastData;
-  const Forecast5DaySection({super.key, required this.forecastData});
+  final String language;
+
+  const Forecast5DaySection({
+    super.key,
+    required this.forecastData,
+    required this.language,
+  });
+
+  String _t(String key) {
+    final Map<String, Map<String, String>> translations = {
+      'EN': {'title': '5-Day Forecast', 'today': 'Today'},
+      'SI': {'title': 'දින 5 ක පුරෝකථනය', 'today': 'අද'},
+      'TA': {'title': '5 நாள் முன்னறிவிப்பு', 'today': 'இன்று'},
+    };
+    return translations[language]?[key] ?? translations['EN']![key]!;
+  }
+
+  String _getDayLabel(int index, DateTime date) {
+    if (index == 0) return _t('today');
+    return DateFormat('EEE, MMM d').format(date);
+  }
 
   IconData _getWeatherIcon(String condition) {
     final c = condition.toLowerCase();
@@ -24,7 +44,6 @@ class Forecast5DaySection extends StatelessWidget {
     return AppColors.coolBlue;
   }
 
-  // ✅ Fixed: was uppercasing entire string
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 
@@ -34,28 +53,27 @@ class Forecast5DaySection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SectionHeader(
-            title: '5-Day Forecast',
+          SectionHeader(
+            title: _t('title'),
             icon: Icons.calendar_month_rounded,
             iconColor: AppColors.coolBlue,
+            language: language,
           ),
           const SizedBox(height: 16),
           ...forecastData.asMap().entries.map((entry) {
             final i = entry.key;
             final item = entry.value;
             DateTime date = DateTime.parse(item['dt_txt'].toString());
-            String day =
-            i == 0 ? 'Today' : DateFormat('EEE, MMM d').format(date);
+            String day = _getDayLabel(i, date);
             int tempVal = ((item['main']?['temp'] ?? 0) as num).round();
             String temp = '$tempVal°C';
 
             var weatherList = item['weather'];
-            String description =
-            (weatherList is List && weatherList.isNotEmpty)
+            String description = (weatherList is List && weatherList.isNotEmpty)
                 ? weatherList[0]['description']?.toString() ?? ""
                 : "";
             String mainCondition =
-            (weatherList is List && weatherList.isNotEmpty)
+                (weatherList is List && weatherList.isNotEmpty)
                 ? weatherList[0]['main']?.toString() ?? ""
                 : "";
 
@@ -63,21 +81,20 @@ class Forecast5DaySection extends StatelessWidget {
 
             return Container(
               margin: const EdgeInsets.only(bottom: 9),
-              padding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
               decoration: BoxDecoration(
                 gradient: i == 0
                     ? const LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [AppColors.accentGlow, AppColors.surfaceMid],
-                )
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [AppColors.accentGlow, AppColors.surfaceMid],
+                      )
                     : LinearGradient(
-                  colors: [
-                    AppColors.surfaceLight,
-                    AppColors.surfaceLight.withValues(alpha: 0.5),
-                  ],
-                ),
+                        colors: [
+                          AppColors.surfaceLight,
+                          AppColors.surfaceLight.withValues(alpha: 0.5),
+                        ],
+                      ),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: i == 0
@@ -158,32 +175,32 @@ class Forecast5DaySection extends StatelessWidget {
                     decoration: BoxDecoration(
                       gradient: i == 0
                           ? const LinearGradient(
-                        colors: [
-                          AppColors.accentLight,
-                          AppColors.accentDark,
-                        ],
-                      )
+                              colors: [
+                                AppColors.accentLight,
+                                AppColors.accentDark,
+                              ],
+                            )
                           : LinearGradient(
-                        colors: [
-                          tempColor.withValues(alpha: 0.15),
-                          tempColor.withValues(alpha: 0.08),
-                        ],
-                      ),
+                              colors: [
+                                tempColor.withValues(alpha: 0.15),
+                                tempColor.withValues(alpha: 0.08),
+                              ],
+                            ),
                       borderRadius: BorderRadius.circular(11),
                       border: i == 0
                           ? null
                           : Border.all(
-                        color: tempColor.withValues(alpha: 0.25),
-                        width: 1,
-                      ),
+                              color: tempColor.withValues(alpha: 0.25),
+                              width: 1,
+                            ),
                       boxShadow: i == 0
                           ? [
-                        BoxShadow(
-                          color: AppColors.accent.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ]
+                              BoxShadow(
+                                color: AppColors.accent.withValues(alpha: 0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
                           : null,
                     ),
                     child: Text(

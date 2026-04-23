@@ -1,0 +1,60 @@
+type User @table {
+  displayName: String!
+  region: String!
+  mainCrop: String!
+  createdAt: Timestamp!
+  phoneNumber: String
+  email: String
+  profilePictureUrl: String
+}
+
+type Crop @table {
+  name: String!
+  cultivationGuide: String!
+  createdAt: Timestamp!
+  idealTemperatureRange: String
+  soilType: String
+}
+
+type MarketPrice @table {
+  cropName: String!
+  pricePerKg: Float!
+  unit: String!
+  marketLocation: String!
+  recordedAt: Timestamp!
+  crop: Crop
+}
+
+type ForumPost @table {
+  title: String!
+  content: String!
+  createdAt: Timestamp!
+  imageUrl: String
+  author: User
+}
+
+type ForumComment @table {
+  content: String!
+  createdAt: Timestamp!
+  author: User
+  post: ForumPost
+}
+
+type WeatherForecast @table {
+  region: String!
+  date: Date!
+  temperature: Float!
+  humidity: Float!
+  precipitationChance: Float!
+  windSpeed: Float!
+  condition: String!
+}
+
+type CultivationCycle @table {
+  cropName: String!
+  plantingDate: Date!
+  expectedHarvestDate: Date!
+  status: String!
+  farmer: User
+  crop: Crop
+}

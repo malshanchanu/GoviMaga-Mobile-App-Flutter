@@ -1,0 +1,45 @@
+query AllCrops @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  crops {
+    id
+    name
+    cultivationGuide
+    idealTemperatureRange
+    soilType
+  }
+}
+
+query MyCultivationCycles @auth(level: USER) {
+  cultivationCycles(where: {farmerId: {eq_expr: "auth.uid"}}) {
+    id
+    cropName
+    plantingDate
+    expectedHarvestDate
+    status
+    crop {
+      name
+    }
+  }
+}
+
+mutation CreateForumPost($title: String!, $content: String!, $imageUrl: String) @auth(level: USER) {
+  forumPost_insert(data: {
+    title: $title,
+    content: $content,
+    createdAt_expr: "request.time",
+    authorId_expr: "auth.uid",
+    imageUrl: $imageUrl
+  }) {
+    id
+  }
+}
+
+query MarketPricesForCrop($cropName: String!) @auth(level: PUBLIC, insecureReason: "This operation is safe to expose to the public") {
+  marketPrices(where: {cropName: {eq: $cropName}}) {
+    id
+    cropName
+    pricePerKg
+    unit
+    marketLocation
+    recordedAt
+  }
+}
