@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:provider/provider.dart';
 import 'screens/auth/login_screen.dart';
 import 'farmer_home_page.dart';
 import 'firebase_options.dart';
 import 'providers/auth_provider.dart';
 import 'services/device_service.dart';
-
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load environment variables FIRST
   await dotenv.load(fileName: ".env");
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-  
+
+  // Initialize Firebase with error handling
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } catch (e) {
+    debugPrint('Firebase already initialized: $e');
+  }
+
   final prefs = await SharedPreferences.getInstance();
   final deviceService = DeviceService(prefs);
-  
+
   runApp(
     MultiProvider(
       providers: [
@@ -67,8 +73,6 @@ class AuthWrapper extends StatefulWidget {
 }
 
 class _AuthWrapperState extends State<AuthWrapper> {
-
-
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthProvider>(
@@ -78,11 +82,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
             body: Center(child: CircularProgressIndicator()),
           );
         }
-        
+
         if (authProvider.isAuthenticated || authProvider.isGuest) {
           return const FarmerHomePage();
         }
-        
+
         return const LoginScreen();
       },
     );
