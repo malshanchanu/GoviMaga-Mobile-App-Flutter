@@ -38,25 +38,21 @@ class _WeatherScreenState extends State<WeatherScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
-  // Localization method
   String _t(String key) {
     final Map<String, Map<String, String>> translations = {
       'EN': {
         'fetching_data': 'Fetching your farm data...',
         'weather_advisory': 'Weather-Driven Crop Advisory',
-        'refresh': 'Refresh',
         'loading': 'Loading...',
       },
       'SI': {
         'fetching_data': 'ඔබේ ගොවිපල දත්ත ලබා ගනිමින්...',
         'weather_advisory': 'කාලගුණය මත පදනම් වූ බෝග උපදෙස්',
-        'refresh': 'නැවත ලබා ගන්න',
         'loading': 'පූරණය වෙමින්...',
       },
       'TA': {
         'fetching_data': 'உங்கள் பண்ணை தரவைப் பெறுகிறது...',
         'weather_advisory': 'வானிலை சார்ந்த பயிர் ஆலோசனை',
-        'refresh': 'புதுப்பிக்கவும்',
         'loading': 'ஏற்றுகிறது...',
       },
     };
@@ -150,7 +146,8 @@ class _WeatherScreenState extends State<WeatherScreen>
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enable location services.')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Please enable location services.')));
         }
         throw Exception('Location services are disabled.');
       }
@@ -160,14 +157,17 @@ class _WeatherScreenState extends State<WeatherScreen>
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions denied.')));
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Location permissions denied.')));
           }
           throw Exception('Location permissions are denied');
         }
       }
       if (permission == LocationPermission.deniedForever) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Location permissions permanently denied. Enable in settings.')));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'Location permissions permanently denied. Enable in settings.')));
         }
         throw Exception('Location permissions are permanently denied.');
       }
@@ -223,9 +223,8 @@ class _WeatherScreenState extends State<WeatherScreen>
           currentCity = currentData['name']?.toString() ?? "Unknown City";
           temperature = (currentData['main']?['temp'] ?? 0).round().toString();
           humidity = (currentData['main']?['humidity'] ?? 0).toString();
-          windSpeed = ((currentData['wind']?['speed'] ?? 0) * 3.6)
-              .round()
-              .toString();
+          windSpeed =
+              ((currentData['wind']?['speed'] ?? 0) * 3.6).round().toString();
           rainfall = rainVolume.toStringAsFixed(1);
           weatherDescription = _capitalize(desc);
           forecastList = dailyForecasts.take(5).toList();
@@ -254,60 +253,69 @@ class _WeatherScreenState extends State<WeatherScreen>
       child: isLoading
           ? _buildLoader()
           : FadeTransition(
-              opacity: _fadeAnimation,
-              child: SlideTransition(
-                position: _slideAnimation,
-                child: CustomScrollView(
-                  physics: const BouncingScrollPhysics(),
-                  slivers: [
-                    // Removed AppBar, using SliverToBoxAdapter for top spacing
-                    SliverToBoxAdapter(child: SizedBox(height: 12)),
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
-                        child: Column(
-                          children: [
-                            _buildHeader(),
-                            const SizedBox(height: 16),
-                            _buildLocationPill(),
-                            const SizedBox(height: 24),
-                            HeroWeatherCard(
-                              temperature: temperature,
-                              humidity: humidity,
-                              windSpeed: windSpeed,
-                              rainfall: rainfall,
-                              description: weatherDescription,
-                              language: widget.language,
-                            ),
-                            const SizedBox(height: 20),
-                            TodaysRecommendationsSection(
-                              temperature: temperature,
-                              humidity: humidity,
-                              windSpeed: windSpeed,
-                              language: widget.language,
-                            ),
-                            const SizedBox(height: 18),
-                            FarmingAlertsSection(
-                              temperature: temperature,
-                              humidity: humidity,
-                              windSpeed: windSpeed,
-                              forecastData: forecastList,
-                              language: widget.language,
-                            ),
-                            const SizedBox(height: 18),
-                            Forecast5DaySection(
-                              forecastData: forecastList,
-                              language: widget.language,
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+        opacity: _fadeAnimation,
+        child: SlideTransition(
+          position: _slideAnimation,
+          // *** Pull-to-refresh wrap  ***
+          child: RefreshIndicator(
+            onRefresh: _getWeatherByLocation,
+            color: AppColors.accent,
+            backgroundColor: AppColors.surface,
+            strokeWidth: 2.5,
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(
+                // AlwaysScrollable
+                parent: AlwaysScrollableScrollPhysics(),
               ),
+              slivers: [
+                SliverToBoxAdapter(child: SizedBox(height: 12)),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                    child: Column(
+                      children: [
+                        _buildHeader(),
+                        const SizedBox(height: 16),
+                        _buildLocationPill(),
+                        const SizedBox(height: 24),
+                        HeroWeatherCard(
+                          temperature: temperature,
+                          humidity: humidity,
+                          windSpeed: windSpeed,
+                          rainfall: rainfall,
+                          description: weatherDescription,
+                          language: widget.language,
+                        ),
+                        const SizedBox(height: 20),
+                        TodaysRecommendationsSection(
+                          temperature: temperature,
+                          humidity: humidity,
+                          windSpeed: windSpeed,
+                          language: widget.language,
+                        ),
+                        const SizedBox(height: 18),
+                        FarmingAlertsSection(
+                          temperature: temperature,
+                          humidity: humidity,
+                          windSpeed: windSpeed,
+                          forecastData: forecastList,
+                          language: widget.language,
+                        ),
+                        const SizedBox(height: 18),
+                        Forecast5DaySection(
+                          forecastData: forecastList,
+                          language: widget.language,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -448,6 +456,7 @@ class _WeatherScreenState extends State<WeatherScreen>
     );
   }
 
+
   Widget _buildLocationPill() {
     return GestureDetector(
       onTap: _getWeatherByLocation,
@@ -497,34 +506,6 @@ class _WeatherScreenState extends State<WeatherScreen>
                 color: AppColors.textPrimary,
                 fontWeight: FontWeight.w700,
                 fontSize: 13.5,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(width: 1, height: 14, color: AppColors.accentBorder),
-            const SizedBox(width: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.surfaceMid,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.refresh_rounded,
-                    color: AppColors.textSecondary,
-                    size: 13,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _t('refresh'),
-                    style: const TextStyle(
-                      color: AppColors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
               ),
             ),
           ],
