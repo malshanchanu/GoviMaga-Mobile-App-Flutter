@@ -25,32 +25,11 @@ class _AIChatScreenState extends State<AIChatScreen> {
   @override
   void initState() {
     super.initState();
-    _initTTS();
     _loadChatHistory(); 
     _setupAI();
   }
 
-  
-  void _initTTS() async {
-    await _flutterTts.setLanguage("si-LK");
-    await _flutterTts.setPitch(1.0);
-    await _flutterTts.setSpeechRate(0.5);
-  }
-
-  
-  Future<void> _speak(String text) async {
-    if (text.isNotEmpty) {
-      await _flutterTts.speak(text);
-    }
-  }
-
-  
-  Future<void> _saveChatHistory() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('chat_history', jsonEncode(_messages));
-  }
-
-  
+  // මතකයෙන් මැසේජ් ලෝඩ් කිරීම
   Future<void> _loadChatHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final String? history = prefs.getString('chat_history');
@@ -64,14 +43,44 @@ class _AIChatScreenState extends State<AIChatScreen> {
     }
   }
 
+  // මුල්ම පණිවිඩය භාෂාව අනුව ලබාදීම
   void _addInitialMessage() {
-    setState(() {
-      _messages.add({
-        'text': 'ආයුබෝවන්! මම ගොවිමඟ සහායකයා. ඔයාගේ වගාවන් ගැන මගෙන් ඕනෑම දෙයක් අහන්න. 🌱',
-        'isUser': false
+    // build එකෙන් පිටත නිසා Locale එක ගන්න පොඩි වෙලාවක් යනවා
+    Future.delayed(Duration.zero, () {
+      if (!mounted) return;
+      final locale = Localizations.localeOf(context);
+      String welcomeText = "ආයුබෝවන්! මම ගොවිමඟ සහායකයා. 🌱"; // Default
+
+      if (locale.languageCode == 'ta') {
+        welcomeText = "வணக்கம்! நான் கோவிமக உதவி ரோபோ. 🌱";
+      } else if (locale.languageCode == 'en') {
+        welcomeText = "Hello! I am GoviMaga Assistant. 🌱";
+      }
+
+      setState(() {
+        _messages.add({'text': welcomeText, 'isUser': false});
       });
+      _saveChatHistory();
     });
-    _saveChatHistory();
+  }
+
+  // Voice එක භාෂාව අනුව පාලනය
+  Future<void> _speak(String text) async {
+    final locale = Localizations.localeOf(context);
+    String ttsLang = "si-LK"; // Default සිංහල
+    
+    if (locale.languageCode == 'ta') ttsLang = "ta-IN";
+    else if (locale.languageCode == 'en') ttsLang = "en-US";
+
+    await _flutterTts.setLanguage(ttsLang);
+    if (text.isNotEmpty) {
+      await _flutterTts.speak(text);
+    }
+  }
+
+  Future<void> _saveChatHistory() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('chat_history', jsonEncode(_messages));
   }
 
   void _setupAI() {
@@ -80,7 +89,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
       _model = GenerativeModel(
         model: 'gemini-pro', 
         apiKey: apiKey,
-        systemInstruction: Content.system('ඔයා ගොවිමඟ සහායකයා. සිංහලෙන් උදව් කරන්න.'),
+        systemInstruction: Content.system('You are GoviMaga Assistant. Respond in the language user asks.'),
       );
       _chatSession = _model!.startChat();
     } catch (e) {
@@ -115,7 +124,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     try {
       if (_chatSession != null) {
         final response = await _chatSession!.sendMessage(Content.text(userMessage));
-        final botResponse = response.text ?? 'මට ඒක තේරුණේ නැහැ.';
+        final botResponse = response.text ?? 'Error';
         
         setState(() {
           _messages.add({'text': botResponse, 'isUser': false});
@@ -125,7 +134,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
       }
     } catch (e) {
       setState(() {
-        _messages.add({'text': 'සොරි මචං, පොඩි Connection අවුලක්. පස්සේ ආයේ ට්‍රයි කරමු.', 'isUser': false});
+        _messages.add({'text': 'Connection Error. Please try again.', 'isUser': false});
       });
     } finally {
       setState(() => _isLoading = false);
@@ -136,6 +145,16 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // භාෂාව අනුව Header එකේ නම මෙතනදී තීරණය වෙනවා
+    final locale = Localizations.localeOf(context);
+    String headerTitle = "ගොවිමඟ AI සහායකයා";
+    
+    if (locale.languageCode == 'ta') {
+      headerTitle = "கோவிமக AI உதவியாளர்";
+    } else if (locale.languageCode == 'en') {
+      headerTitle = "GoviMaga AI Assistant";
+    }
+
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: const BoxDecoration(
@@ -154,17 +173,16 @@ class _AIChatScreenState extends State<AIChatScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.smart_toy_rounded, color: Colors.white),
-                    SizedBox(width: 10),
-                    Text("ගොවිමඟ AI සහායකයා", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    const Icon(Icons.smart_toy_rounded, color: Colors.white),
+                    const SizedBox(width: 10),
+                    Text(headerTitle, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ],
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white70),
                   onPressed: () async {
-                    // History එක සම්පූර්ණයෙන්ම මකා දැමීම
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.remove('chat_history');
                     setState(() => _messages.clear());
@@ -186,29 +204,37 @@ class _AIChatScreenState extends State<AIChatScreen> {
                 final isUser = msg['isUser'];
                 return Align(
                   alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    margin: const EdgeInsets.symmetric(vertical: 6),
-                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                    decoration: BoxDecoration(
-                      color: isUser ? const Color(0xFF1B5E20) : Colors.grey[100],
-                      borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(18),
-                        topRight: const Radius.circular(18),
-                        bottomLeft: Radius.circular(isUser ? 18 : 0),
-                        bottomRight: Radius.circular(isUser ? 0 : 18),
+                  child: Row(
+                    mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (!isUser) // රොබෝවාගේ පැත්තට විතරක් Speaker Icon එකක්
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          icon: const Icon(Icons.volume_up, size: 18, color: Colors.grey),
+                          onPressed: () => _speak(msg['text']),
+                        ),
+                      const SizedBox(width: 5),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+                        decoration: BoxDecoration(
+                          color: isUser ? const Color(0xFF1B5E20) : Colors.grey[100],
+                          borderRadius: BorderRadius.only(
+                            topLeft: const Radius.circular(18),
+                            topRight: const Radius.circular(18),
+                            bottomLeft: Radius.circular(isUser ? 18 : 0),
+                            bottomRight: Radius.circular(isUser ? 0 : 18),
+                          ),
+                        ),
+                        child: Text(
+                          msg['text'], 
+                          style: TextStyle(color: isUser ? Colors.white : Colors.black87, fontSize: 14.5),
+                        ),
                       ),
-                      boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5, offset: const Offset(0, 2))
-                      ],
-                    ),
-                    child: InkWell(
-                      onLongPress: () => _speak(msg['text']),
-                      child: Text(
-                        msg['text'], 
-                        style: TextStyle(color: isUser ? Colors.white : Colors.black87, fontSize: 14.5),
-                      ),
-                    ),
+                    ],
                   ),
                 );
               },
@@ -223,25 +249,17 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
           // Input Area
           Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom + 20, 
-              left: 15, 
-              right: 15,
-              top: 10
-            ),
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom + 20, left: 15, right: 15, top: 10),
             child: Row(
               children: [
                 Expanded(
                   child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(30),
-                    ),
+                    decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(30)),
                     child: TextField(
                       controller: _messageController,
                       onSubmitted: (_) => _sendMessage(),
                       decoration: const InputDecoration(
-                        hintText: "ප්‍රශ්නය මෙතන ලියන්න...",
+                        hintText: "...",
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       ),
