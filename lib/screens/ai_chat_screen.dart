@@ -34,18 +34,20 @@ class _AIChatScreenState extends State<AIChatScreen> {
     final prefs = await SharedPreferences.getInstance();
     final String? history = prefs.getString('chat_history');
     if (history != null) {
-      setState(() {
-        _messages = List<Map<String, dynamic>>.from(jsonDecode(history));
-      });
+      if (mounted) {
+        setState(() {
+          _messages = List<Map<String, dynamic>>.from(jsonDecode(history));
+        });
+      }
       _scrollToBottom();
     } else {
       _addInitialMessage();
     }
   }
 
-  // මුල්ම පණිවිඩය භාෂාව අනුව ලබාදීම
+
   void _addInitialMessage() {
-    // build එකෙන් පිටත නිසා Locale එක ගන්න පොඩි වෙලාවක් යනවා
+
     Future.delayed(Duration.zero, () {
       if (!mounted) return;
       final locale = Localizations.localeOf(context);
@@ -57,17 +59,19 @@ class _AIChatScreenState extends State<AIChatScreen> {
         welcomeText = "Hello! I am GoviMaga Assistant. 🌱";
       }
 
-      setState(() {
-        _messages.add({'text': welcomeText, 'isUser': false});
-      });
+      if (mounted) {
+        setState(() {
+          _messages.add({'text': welcomeText, 'isUser': false});
+        });
+      }
       _saveChatHistory();
     });
   }
 
-  // Voice එක භාෂාව අනුව පාලනය
+
   Future<void> _speak(String text) async {
     final locale = Localizations.localeOf(context);
-    String ttsLang = "si-LK"; // Default සිංහල
+    String ttsLang = "si-LK"; 
     
     if (locale.languageCode == 'ta') ttsLang = "ta-IN";
     else if (locale.languageCode == 'en') ttsLang = "en-US";
@@ -84,10 +88,10 @@ class _AIChatScreenState extends State<AIChatScreen> {
   }
 
   void _setupAI() {
-    final String apiKey = dotenv.env['GEMINI_API_KEY'] ?? "AIzaSyDb6hit3LEq9qh5JnItrVa5aJ0w3YqdWvo";
+    final String apiKey = dotenv.env['GEMINI_API_KEY'] ?? "";
     try {
       _model = GenerativeModel(
-        model: 'gemini-pro', 
+        model: 'gemini-2.5-flash', 
         apiKey: apiKey,
         systemInstruction: Content.system('You are GoviMaga Assistant. Respond in the language user asks.'),
       );
@@ -113,31 +117,61 @@ class _AIChatScreenState extends State<AIChatScreen> {
     if (_messageController.text.trim().isEmpty) return;
 
     final userMessage = _messageController.text.trim();
-    setState(() {
-      _messages.add({'text': userMessage, 'isUser': true});
-      _isLoading = true;
-    });
+    if (mounted) {
+      setState(() {
+        _messages.add({'text': userMessage, 'isUser': true});
+        _isLoading = true;
+      });
+    }
     _messageController.clear();
     _scrollToBottom();
     _saveChatHistory();
 
     try {
       if (_chatSession != null) {
-        final response = await _chatSession!.sendMessage(Content.text(userMessage));
-        final botResponse = response.text ?? 'Error';
+        GenerateContentResponse? response;
+        int retries = 3;
+        String lastError = '';
         
-        setState(() {
-          _messages.add({'text': botResponse, 'isUser': false});
-        });
+        while (retries > 0) {
+          try {
+            response = await _chatSession!.sendMessage(Content.text(userMessage));
+            break; // Success
+          } catch (e) {
+            lastError = e.toString();
+            if (lastError.contains('503') || 
+                lastError.contains('unavailable') || 
+                lastError.toLowerCase().contains('high demand')) {
+              retries--;
+              if (retries > 0) {
+                await Future.delayed(const Duration(seconds: 2));
+                continue; // Retry
+              }
+            }
+            throw e; // Not a 503 or out of retries
+          }
+        }
+
+        final botResponse = response?.text ?? 'Error generating response';
+        
+        if (mounted) {
+          setState(() {
+            _messages.add({'text': botResponse, 'isUser': false});
+          });
+        }
         
         _speak(botResponse); 
       }
     } catch (e) {
-      setState(() {
-        _messages.add({'text': 'Connection Error. Please try again.', 'isUser': false});
-      });
+      if (mounted) {
+        setState(() {
+          _messages.add({'text': "Connection Error: ${e.toString().replaceAll('Exception: ', '')}", 'isUser': false});
+        });
+      }
     } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
       _scrollToBottom();
       _saveChatHistory();
     }
@@ -145,7 +179,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // භාෂාව අනුව Header එකේ නම මෙතනදී තීරණය වෙනවා
+
     final locale = Localizations.localeOf(context);
     String headerTitle = "ගොවිමඟ AI සහායකයා";
     
@@ -185,7 +219,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                   onPressed: () async {
                     final prefs = await SharedPreferences.getInstance();
                     await prefs.remove('chat_history');
-                    setState(() => _messages.clear());
+                    if (mounted) setState(() => _messages.clear());
                     _addInitialMessage();
                   },
                 )
@@ -208,7 +242,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
                     mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      if (!isUser) // රොබෝවාගේ පැත්තට විතරක් Speaker Icon එකක්
+                      if (!isUser) 
                         IconButton(
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),

@@ -10,50 +10,6 @@ class ActivityLog extends StatefulWidget {
 }
 
 class _ActivityLogState extends State<ActivityLog> {
-  List<Map<String, dynamic>> _activities = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadActivities();
-  }
-
-  Future<void> _loadActivities() async {
-    setState(() => _isLoading = true);
-    
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    
-    if (userId != null) {
-      try {
-        // Get activities from Firestore
-        final snapshot = await FirebaseFirestore.instance
-            .collection('users')
-            .doc(userId)
-            .collection('activities')
-            .orderBy('timestamp', descending: true)
-            .limit(50)
-            .get();
-        
-        setState(() {
-          _activities = snapshot.docs.map((doc) => doc.data()).toList();
-          _isLoading = false;
-        });
-      } catch (e) {
-        // Use mock data if Firestore fails
-        setState(() {
-          _activities = _getMockActivities();
-          _isLoading = false;
-        });
-      }
-    } else {
-      setState(() {
-        _activities = _getMockActivities();
-        _isLoading = false;
-      });
-    }
-  }
-
   List<Map<String, dynamic>> _getMockActivities() {
     return [
       {
@@ -146,69 +102,94 @@ class _ActivityLogState extends State<ActivityLog> {
 
   @override
   Widget build(BuildContext context) {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text("Activity Log"),
         centerTitle: true,
         backgroundColor: const Color(0xFF1B5E20),
         foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadActivities,
-          ),
-        ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _activities.isEmpty
-              ? const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.history, size: 64, color: Colors.grey),
-                      SizedBox(height: 16),
-                      Text(
-                        'No activities yet',
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
-                      ),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  itemCount: _activities.length,
-                  itemBuilder: (context, index) {
-                    final activity = _activities[index];
-                    final iconType = activity["icon"] ?? "info";
-                    
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: getColor(iconType).withValues(alpha: 0.2),
-                          child: Icon(
-                            getIcon(iconType),
-                            color: getColor(iconType),
-                            size: 20,
-                          ),
+      body: userId == null
+          ? _buildActivityList(_getMockActivities())
+          : StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(userId)
+                  .collection('activities')
+                  .orderBy('timestamp', descending: true)
+                  .limit(50)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError || !snapshot.hasData) {
+                  // Fallback to mock data if there is an error
+                  return _buildActivityList(_getMockActivities());
+                }
+
+                final docs = snapshot.data!.docs;
+                
+                if (docs.isEmpty) {
+                  return const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.history, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          'No activities yet',
+                          style: TextStyle(color: Colors.grey, fontSize: 16),
                         ),
-                        title: Text(
-                          activity["title"] ?? "Activity",
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        subtitle: Text(
-                          formatTime(activity["time"] ?? DateTime.now().toIso8601String()),
-                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                        ),
-                        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                      ),
-                    );
-                  },
-                ),
+                      ],
+                    ),
+                  );
+                }
+
+                final activities = docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+                return _buildActivityList(activities);
+              },
+            ),
+    );
+  }
+
+  Widget _buildActivityList(List<Map<String, dynamic>> activities) {
+    return ListView.builder(
+      itemCount: activities.length,
+      itemBuilder: (context, index) {
+        final activity = activities[index];
+        final iconType = activity["icon"] ?? "info";
+        
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          elevation: 2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: getColor(iconType).withValues(alpha: 0.2),
+              child: Icon(
+                getIcon(iconType),
+                color: getColor(iconType),
+                size: 20,
+              ),
+            ),
+            title: Text(
+              activity["title"] ?? "Activity",
+              style: const TextStyle(fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              formatTime(activity["time"] ?? DateTime.now().toIso8601String()),
+              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+            ),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+          ),
+        );
+      },
     );
   }
 }

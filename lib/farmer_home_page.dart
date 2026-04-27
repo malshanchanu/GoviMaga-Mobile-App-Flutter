@@ -170,7 +170,7 @@ class _FarmerHomePageState extends State<FarmerHomePage> {
       body: pages[_selectedIndex],
 
       
-      floatingActionButton: const FloatingRobo(),
+      floatingActionButton: FloatingRobo(language: _selectedLanguage),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
 
       bottomNavigationBar: BottomNavigationBar(

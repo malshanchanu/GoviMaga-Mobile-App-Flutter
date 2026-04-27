@@ -5,6 +5,9 @@ class UserModel {
   final String phone;
   final String? profileImageUrl;
   final String preferredLanguage;
+  final bool is2FAEnabled;
+  final bool isProfilePrivate;
+  final bool isLocationSharing;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -15,6 +18,9 @@ class UserModel {
     required this.phone,
     this.profileImageUrl,
     this.preferredLanguage = 'EN',
+    this.is2FAEnabled = false,
+    this.isProfilePrivate = false,
+    this.isLocationSharing = true,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -27,6 +33,9 @@ class UserModel {
       'phone': phone,
       'profileImageUrl': profileImageUrl,
       'preferredLanguage': preferredLanguage,
+      'is2FAEnabled': is2FAEnabled,
+      'isProfilePrivate': isProfilePrivate,
+      'isLocationSharing': isLocationSharing,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -50,6 +59,9 @@ class UserModel {
       phone: json['phone'] ?? '',
       profileImageUrl: json['profileImageUrl'],
       preferredLanguage: json['preferredLanguage'] ?? 'EN',
+      is2FAEnabled: json['is2FAEnabled'] ?? false,
+      isProfilePrivate: json['isProfilePrivate'] ?? false,
+      isLocationSharing: json['isLocationSharing'] ?? true,
       createdAt: _parseDate(json['createdAt']),
       updatedAt: _parseDate(json['updatedAt']),
     );
@@ -60,6 +72,9 @@ class UserModel {
     String? phone,
     String? profileImageUrl,
     String? preferredLanguage,
+    bool? is2FAEnabled,
+    bool? isProfilePrivate,
+    bool? isLocationSharing,
   }) {
     return UserModel(
       id: id,
@@ -68,6 +83,9 @@ class UserModel {
       phone: phone ?? this.phone,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       preferredLanguage: preferredLanguage ?? this.preferredLanguage,
+      is2FAEnabled: is2FAEnabled ?? this.is2FAEnabled,
+      isProfilePrivate: isProfilePrivate ?? this.isProfilePrivate,
+      isLocationSharing: isLocationSharing ?? this.isLocationSharing,
       createdAt: createdAt,
       updatedAt: DateTime.now(),
     );

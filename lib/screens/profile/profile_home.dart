@@ -7,6 +7,8 @@ import '../../providers/auth_provider.dart' as app_auth;
 import '../../services/user_service.dart';
 import '../../models/user_model.dart';
 import 'edit_details.dart';
+import 'activity_log.dart';
+import 'privacy_security.dart';
 
 class ProfileHome extends StatefulWidget {
   final String language;
@@ -42,7 +44,7 @@ class _ProfileHomeState extends State<ProfileHome> {
       );
     }
 
-    // ✅ Real-time user data stream
+    //  Real-time user data stream
     return Scaffold(
       appBar: AppBar(
         title: const Text("My Profile"),
@@ -161,12 +163,16 @@ class _ProfileHomeState extends State<ProfileHome> {
                 _buildMenuItem(
                   icon: Icons.history,
                   title: 'Activity Log',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ActivityLog()));
+                  },
                 ),
                 _buildMenuItem(
                   icon: Icons.security,
                   title: 'Privacy & Security',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const PrivacySecurity()));
+                  },
                 ),
                 const Divider(),
                 _buildMenuItem(

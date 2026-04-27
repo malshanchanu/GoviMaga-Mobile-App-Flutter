@@ -140,15 +140,18 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
   }
 
   Future<void> _loadRecentDiagnoses() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     
     try {
       // Load from Firebase first
       final diagnoses = await _diagnosisService.getDiagnoses();
       if (diagnoses.isNotEmpty) {
-        setState(() {
-          _recentDiagnoses = diagnoses;
-        });
+        if (mounted) {
+          setState(() {
+            _recentDiagnoses = diagnoses;
+          });
+        }
       } else {
         // Fallback to local storage
         final prefs = await SharedPreferences.getInstance();
@@ -156,9 +159,11 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
         if (data != null) {
           try {
             List<dynamic> decoded = json.decode(data);
-            setState(() {
-              _recentDiagnoses = decoded.cast<Map<String, dynamic>>();
-            });
+            if (mounted) {
+              setState(() {
+                _recentDiagnoses = decoded.cast<Map<String, dynamic>>();
+              });
+            }
           } catch (e) {
             debugPrint('Error loading diagnoses: $e');
           }
@@ -172,16 +177,18 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
       if (data != null) {
         try {
           List<dynamic> decoded = json.decode(data);
-          setState(() {
-            _recentDiagnoses = decoded.cast<Map<String, dynamic>>();
-          });
+          if (mounted) {
+            setState(() {
+              _recentDiagnoses = decoded.cast<Map<String, dynamic>>();
+            });
+          }
         } catch (e) {
           debugPrint('Error loading diagnoses: $e');
         }
       }
     }
     
-    setState(() => _isLoading = false);
+    if (mounted) setState(() => _isLoading = false);
   }
 
   Future<void> _saveDiagnoses() async {
@@ -191,9 +198,11 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
   }
 
   Future<void> _clearHistory() async {
-    setState(() {
-      _recentDiagnoses.clear();
-    });
+    if (mounted) {
+      setState(() {
+        _recentDiagnoses.clear();
+      });
+    }
     await _saveDiagnoses();
     
     // Also clear from Firebase
@@ -217,13 +226,17 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
       final pickedFile = await picker.pickImage(
         source: source,
         imageQuality: 80,
+        maxWidth: 800,
+        maxHeight: 800,
       );
 
       if (pickedFile != null) {
-        setState(() {
-          _selectedImage = File(pickedFile.path);
-          _diagnosisData = null;
-        });
+        if (mounted) {
+          setState(() {
+            _selectedImage = File(pickedFile.path);
+            _diagnosisData = null;
+          });
+        }
       }
     } catch (e) {
       _showError('Error picking image: $e');
@@ -275,13 +288,14 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _diagnosisData = null;
-    });
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _diagnosisData = null;
+      });
+    }
 
     try {
-      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: _apiKey);
       final imageBytes = await image.readAsBytes();
 
       final prompt = """
@@ -320,10 +334,37 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
         Content.multi([TextPart(prompt), DataPart('image/jpeg', imageBytes)]),
       ];
 
-      final response = await model.generateContent(content);
+      GenerateContentResponse? response;
+      String? lastError;
+      
+      // Use the stable, fast model and retry on 503 errors
+      int retries = 3;
+      while (retries > 0) {
+        try {
+          final model = GenerativeModel(model: 'gemini-2.5-flash', apiKey: _apiKey);
+          response = await model.generateContent(content);
+          if (response.text != null && response.text!.isNotEmpty) {
+            break; // Success
+          } else {
+            throw Exception('Model returned empty response');
+          }
+        } catch (e) {
+          lastError = e.toString();
+          if (lastError!.contains('503') || 
+              lastError!.contains('unavailable') || 
+              lastError!.toLowerCase().contains('high demand')) {
+            retries--;
+            if (retries > 0) {
+              await Future.delayed(const Duration(seconds: 2));
+              continue; // Retry
+            }
+          }
+          break; // If it's not a 503 or we're out of retries, break out of the loop
+        }
+      }
 
-      if (response.text == null || response.text!.isEmpty) {
-        throw Exception('No response from API');
+      if (response == null || response.text == null || response.text!.isEmpty) {
+        throw Exception(lastError ?? 'Failed to generate content after retries');
       }
 
       String cleanText = response.text!;
@@ -335,13 +376,15 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
       
       Map<String, dynamic> diagnosisData = json.decode(cleanText);
 
-      setState(() {
-        _diagnosisData = diagnosisData;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _diagnosisData = diagnosisData;
+          _isLoading = false;
+        });
+      }
 
       // Save to Firebase (show saving indicator)
-      setState(() => _isSaving = true);
+      if (mounted) setState(() => _isSaving = true);
       
       try {
         await _diagnosisService.saveDiagnosis(
@@ -385,13 +428,15 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
         }
       }
       
-      setState(() => _isSaving = false);
+      if (mounted) setState(() => _isSaving = false);
       
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _isSaving = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isSaving = false;
+        });
+      }
       _showError('${_t('error')}\n${e.toString()}');
     }
   }
@@ -410,10 +455,12 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
   }
 
   void _cancelDiagnosis() {
-    setState(() {
-      _selectedImage = null;
-      _diagnosisData = null;
-    });
+    if (mounted) {
+      setState(() {
+        _selectedImage = null;
+        _diagnosisData = null;
+      });
+    }
   }
 
   Color _getSeverityColor(String severity) {

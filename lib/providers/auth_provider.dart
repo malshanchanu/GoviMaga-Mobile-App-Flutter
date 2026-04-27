@@ -16,7 +16,7 @@ class AuthProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isAuthenticated => _user != null && !_isGuest;
 
-  // ✅ Fix: Constructor with required parameter
+  //  Constructor with required parameter
   AuthProvider({required DeviceService deviceService}) : _deviceService = deviceService;
 
   Future<void> init() async {

@@ -93,7 +93,9 @@ class _LoginScreenState extends State<LoginScreen>
       }
     }
 
-    setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _continueAsGuest() async {

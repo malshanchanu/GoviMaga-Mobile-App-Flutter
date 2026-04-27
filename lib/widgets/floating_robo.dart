@@ -4,7 +4,9 @@ import 'package:lottie/lottie.dart';
 import '../screens/ai_chat_screen.dart';
 
 class FloatingRobo extends StatefulWidget {
-  const FloatingRobo({super.key});
+  final String language;
+
+  const FloatingRobo({super.key, this.language = 'EN'});
 
   @override
   State<FloatingRobo> createState() => _FloatingRoboState();
@@ -42,6 +44,14 @@ class _FloatingRoboState extends State<FloatingRobo> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    String greeting = "Hello, can I help you? 🤖";
+    
+    if (widget.language == 'TA') {
+      greeting = "வணக்கம், நான் உதவலாமா? 🤖";
+    } else if (widget.language == 'SI') {
+      greeting = "Hello! මම උදව් කරන්නද? 🤖";
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 10, right: 10),
       child: Stack(
@@ -61,9 +71,9 @@ class _FloatingRoboState extends State<FloatingRobo> with SingleTickerProviderSt
                   BoxShadow(color: Colors.black12, blurRadius: 10, offset: const Offset(0, 4))
                 ],
               ),
-              child: const Text(
-                "Hello! මම උදව් කරන්නද? 🤖",
-                style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1B5E20), fontSize: 13),
+              child: Text(
+                greeting,
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1B5E20), fontSize: 13),
               ),
             ),
           ),
