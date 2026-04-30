@@ -1,3 +1,5 @@
+//forgot_password_screen.dart - A screen for users to request a password reset link via email.
+
 import 'package:flutter/material.dart';
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
@@ -33,7 +35,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: AppTheme.error),
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: AppTheme.error,
+          ),
         );
       }
     }
@@ -85,10 +90,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                   ),
                 ),
                 const SizedBox(height: 32),
-                Text(
-                  'Forgot Password?',
-                  style: AppTheme.heading2,
-                ),
+                Text('Forgot Password?', style: AppTheme.heading2),
                 const SizedBox(height: 8),
                 Text(
                   'Enter your email address and we\'ll send you a link to reset your password.',
@@ -137,11 +139,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     decoration: BoxDecoration(
                       color: AppTheme.success.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppTheme.success.withValues(alpha: 0.3)),
+                      border: Border.all(
+                        color: AppTheme.success.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: Column(
                       children: [
-                        const Icon(Icons.check_circle, size: 48, color: AppTheme.success),
+                        const Icon(
+                          Icons.check_circle,
+                          size: 48,
+                          color: AppTheme.success,
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'Check your email',
