@@ -1,3 +1,4 @@
+// Privacy & Security Settings
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -70,7 +71,8 @@ class _PrivacySecurityState extends State<PrivacySecurity> {
         'confirm_password': 'கடவுச்சொல்லை உறுதிப்படுத்தவும்',
         'update': 'கடவுச்சொல்லை புதுப்பிக்கவும்',
         'password_mismatch': 'கடவுச்சொற்கள் பொருந்தவில்லை',
-        'password_empty': 'தயவுசெய்து அனைத்து கடவுச்சொல் புலங்களையும் நிரப்பவும்',
+        'password_empty':
+            'தயவுசெய்து அனைத்து கடவுச்சொல் புலங்களையும் நிரப்பவும்',
         'password_short': 'கடவுச்சொல் குறைந்தது 6 எழுத்துகளாக இருக்க வேண்டும்',
         'password_success': 'கடவுச்சொல் வெற்றிகரமாக புதுப்பிக்கப்பட்டது',
         'password_error': 'கடவுச்சொல்லைப் புதுப்பிப்பதில் பிழை',
@@ -90,34 +92,35 @@ class _PrivacySecurityState extends State<PrivacySecurity> {
   }
 
   Future<void> _changePassword() async {
-    if (_passwordController.text.isEmpty || _confirmPasswordController.text.isEmpty) {
+    if (_passwordController.text.isEmpty ||
+        _confirmPasswordController.text.isEmpty) {
       _showMessage(_t('password_empty'), isError: true);
       return;
     }
-    
+
     if (_passwordController.text.length < 6) {
       _showMessage(_t('password_short'), isError: true);
       return;
     }
-    
+
     if (_passwordController.text != _confirmPasswordController.text) {
       _showMessage(_t('password_mismatch'), isError: true);
       return;
     }
-    
+
     setState(() => _isLoading = true);
-    
+
     try {
       final user = FirebaseAuth.instance.currentUser;
       await user?.updatePassword(_passwordController.text);
-      
+
       _showMessage(_t('password_success'));
       _passwordController.clear();
       _confirmPasswordController.clear();
     } catch (e) {
       _showMessage('${_t('password_error')}: $e', isError: true);
     }
-    
+
     setState(() => _isLoading = false);
   }
 
@@ -125,7 +128,7 @@ class _PrivacySecurityState extends State<PrivacySecurity> {
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) return;
-      
+
       await FirebaseFirestore.instance.collection('users').doc(userId).update({
         field: value,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -246,7 +249,10 @@ class _PrivacySecurityState extends State<PrivacySecurity> {
                         children: [
                           Text(
                             _t('change_password'),
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(height: 12),
                           TextField(
@@ -276,7 +282,9 @@ class _PrivacySecurityState extends State<PrivacySecurity> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: const Color(0xFF1B5E20),
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
                               child: _isLoading
                                   ? const SizedBox(
@@ -314,25 +322,31 @@ class _PrivacySecurityState extends State<PrivacySecurity> {
                         children: [
                           Text(
                             _t('security_settings'),
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           SwitchListTile(
                             title: Text(_t('two_factor')),
                             value: is2FAEnabled,
-                            onChanged: (value) => _updateSetting('is2FAEnabled', value),
+                            onChanged: (value) =>
+                                _updateSetting('is2FAEnabled', value),
                             activeThumbColor: const Color(0xFF1B5E20),
                           ),
                           SwitchListTile(
                             title: Text(_t('private_profile')),
                             value: isProfilePrivate,
-                            onChanged: (value) => _updateSetting('isProfilePrivate', value),
+                            onChanged: (value) =>
+                                _updateSetting('isProfilePrivate', value),
                             activeThumbColor: const Color(0xFF1B5E20),
                           ),
                           SwitchListTile(
                             title: Text(_t('location_sharing')),
                             value: isLocationSharing,
-                            onChanged: (value) => _updateSetting('isLocationSharing', value),
+                            onChanged: (value) =>
+                                _updateSetting('isLocationSharing', value),
                             activeThumbColor: const Color(0xFF1B5E20),
                           ),
                         ],
@@ -359,11 +373,17 @@ class _PrivacySecurityState extends State<PrivacySecurity> {
                         children: [
                           Text(
                             _t('privacy_actions'),
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           ListTile(
-                            leading: const Icon(Icons.delete_forever, color: Colors.red),
+                            leading: const Icon(
+                              Icons.delete_forever,
+                              color: Colors.red,
+                            ),
                             title: Text(_t('delete_account')),
                             onTap: _showDeleteAccountDialog,
                           ),

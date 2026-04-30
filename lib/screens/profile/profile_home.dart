@@ -1,3 +1,4 @@
+// Profile Home Screen
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -22,7 +23,10 @@ class _ProfileHomeState extends State<ProfileHome> {
   final UserService _userService = UserService();
 
   Future<void> _logout() async {
-    final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
+    final authProvider = Provider.of<app_auth.AuthProvider>(
+      context,
+      listen: false,
+    );
     await authProvider.logout();
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
@@ -32,7 +36,7 @@ class _ProfileHomeState extends State<ProfileHome> {
   @override
   Widget build(BuildContext context) {
     final authProvider = Provider.of<app_auth.AuthProvider>(context);
-    
+
     if (authProvider.isGuest) {
       return _buildGuestProfile();
     }
@@ -49,10 +53,7 @@ class _ProfileHomeState extends State<ProfileHome> {
       appBar: AppBar(
         title: Row(
           mainAxisSize: MainAxisSize.min,
-          children: const [
-            SizedBox(width: 8),
-            Text("My Profile"),
-          ],
+          children: const [SizedBox(width: 8), Text("My Profile")],
         ),
         backgroundColor: const Color(0xFF1B5E20),
         foregroundColor: Colors.white,
@@ -123,73 +124,78 @@ class _ProfileHomeState extends State<ProfileHome> {
       padding: const EdgeInsets.all(24),
       child: Column(
         children: [
-                const SizedBox(height: 20),
-                // Profile Avatar
-                CircleAvatar(
-                  radius: 60,
-                  backgroundColor: const Color(0xFF1B5E20),
-                  child: Text(
-                    user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
-                    style: const TextStyle(fontSize: 48, color: Colors.white),
+          const SizedBox(height: 20),
+          // Profile Avatar
+          CircleAvatar(
+            radius: 60,
+            backgroundColor: const Color(0xFF1B5E20),
+            child: Text(
+              user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
+              style: const TextStyle(fontSize: 48, color: Colors.white),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            user.name,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(user.email, style: TextStyle(color: Colors.grey[600])),
+          const SizedBox(height: 4),
+          Text(
+            user.phone,
+            style: TextStyle(color: Colors.grey[500], fontSize: 14),
+          ),
+          const SizedBox(height: 32),
+          _buildMenuItem(
+            icon: Icons.edit,
+            title: 'Edit Profile',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => EditDetails(
+                    name: user.name,
+                    email: user.email,
+                    phone: user.phone,
+                    language: widget.language,
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  user.name,
-                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              );
+            },
+          ),
+          _buildMenuItem(
+            icon: Icons.history,
+            title: 'Activity Log',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ActivityLog()),
+              );
+            },
+          ),
+          _buildMenuItem(
+            icon: Icons.security,
+            title: 'Privacy & Security',
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PrivacySecurity(),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  user.email,
-                  style: TextStyle(color: Colors.grey[600]),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  user.phone,
-                  style: TextStyle(color: Colors.grey[500], fontSize: 14),
-                ),
-                const SizedBox(height: 32),
-                _buildMenuItem(
-                  icon: Icons.edit,
-                  title: 'Edit Profile',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => EditDetails(
-                          name: user.name,
-                          email: user.email,
-                          phone: user.phone,
-                          language: widget.language,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                _buildMenuItem(
-                  icon: Icons.history,
-                  title: 'Activity Log',
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const ActivityLog()));
-                  },
-                ),
-                _buildMenuItem(
-                  icon: Icons.security,
-                  title: 'Privacy & Security',
-                  onTap: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const PrivacySecurity()));
-                  },
-                ),
-                const Divider(),
-                _buildMenuItem(
-                  icon: Icons.logout,
-                  title: 'Logout',
-                  textColor: Colors.red,
-                  iconColor: Colors.red,
-                  onTap: _logout,
-                ),
-              ],
-            ),
+              );
+            },
+          ),
+          const Divider(),
+          _buildMenuItem(
+            icon: Icons.logout,
+            title: 'Logout',
+            textColor: Colors.red,
+            iconColor: Colors.red,
+            onTap: _logout,
+          ),
+        ],
+      ),
     );
   }
 
@@ -219,7 +225,10 @@ class _ProfileHomeState extends State<ProfileHome> {
               const Icon(Icons.person_outline, size: 80, color: Colors.grey),
               const SizedBox(height: 16),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.orange[100],
                   borderRadius: BorderRadius.circular(20),
@@ -247,7 +256,10 @@ class _ProfileHomeState extends State<ProfileHome> {
               const SizedBox(height: 32),
               ElevatedButton.icon(
                 onPressed: () async {
-                  final authProvider = Provider.of<app_auth.AuthProvider>(context, listen: false);
+                  final authProvider = Provider.of<app_auth.AuthProvider>(
+                    context,
+                    listen: false,
+                  );
                   await authProvider.logout(); // Clears guest mode and logs out
                   if (mounted) {
                     Navigator.pushReplacementNamed(context, '/login');
@@ -276,10 +288,7 @@ class _ProfileHomeState extends State<ProfileHome> {
   }) {
     return ListTile(
       leading: Icon(icon, color: iconColor ?? Colors.blueGrey),
-      title: Text(
-        title,
-        style: TextStyle(color: textColor ?? Colors.black87),
-      ),
+      title: Text(title, style: TextStyle(color: textColor ?? Colors.black87)),
       trailing: const Icon(Icons.arrow_forward_ios, size: 16),
       onTap: onTap,
     );
