@@ -1,3 +1,4 @@
+// This file defines the ActivityLog screen, which displays a list of user activities in a visually appealing way. It fetches activity data from Firestore and formats it for display. If the user is not logged in or if there is an error fetching data, it falls back to displaying mock activities. Each activity is represented with an icon, title, and timestamp, and the list is styled with cards for better readability.
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -14,28 +15,38 @@ class _ActivityLogState extends State<ActivityLog> {
     return [
       {
         "title": "Logged In",
-        "time": DateTime.now().subtract(const Duration(hours: 2)).toIso8601String(),
-        "icon": "login"
+        "time": DateTime.now()
+            .subtract(const Duration(hours: 2))
+            .toIso8601String(),
+        "icon": "login",
       },
       {
         "title": "Added New Crop",
-        "time": DateTime.now().subtract(const Duration(days: 1)).toIso8601String(),
-        "icon": "crop"
+        "time": DateTime.now()
+            .subtract(const Duration(days: 1))
+            .toIso8601String(),
+        "icon": "crop",
       },
       {
         "title": "Diagnosed Disease",
-        "time": DateTime.now().subtract(const Duration(days: 2)).toIso8601String(),
-        "icon": "diagnose"
+        "time": DateTime.now()
+            .subtract(const Duration(days: 2))
+            .toIso8601String(),
+        "icon": "diagnose",
       },
       {
         "title": "Checked Weather",
-        "time": DateTime.now().subtract(const Duration(days: 3)).toIso8601String(),
-        "icon": "weather"
+        "time": DateTime.now()
+            .subtract(const Duration(days: 3))
+            .toIso8601String(),
+        "icon": "weather",
       },
       {
         "title": "Updated Profile",
-        "time": DateTime.now().subtract(const Duration(days: 5)).toIso8601String(),
-        "icon": "edit"
+        "time": DateTime.now()
+            .subtract(const Duration(days: 5))
+            .toIso8601String(),
+        "icon": "edit",
       },
     ];
   }
@@ -83,7 +94,7 @@ class _ActivityLogState extends State<ActivityLog> {
       final dateTime = DateTime.parse(dateTimeString);
       final now = DateTime.now();
       final difference = now.difference(dateTime);
-      
+
       if (difference.inDays > 7) {
         return '${(difference.inDays / 7).floor()} weeks ago';
       } else if (difference.inDays > 0) {
@@ -142,7 +153,7 @@ class _ActivityLogState extends State<ActivityLog> {
                 }
 
                 final docs = snapshot.data!.docs;
-                
+
                 if (docs.isEmpty) {
                   return const Center(
                     child: Column(
@@ -159,7 +170,9 @@ class _ActivityLogState extends State<ActivityLog> {
                   );
                 }
 
-                final activities = docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+                final activities = docs
+                    .map((doc) => doc.data() as Map<String, dynamic>)
+                    .toList();
                 return _buildActivityList(activities);
               },
             ),
@@ -172,7 +185,7 @@ class _ActivityLogState extends State<ActivityLog> {
       itemBuilder: (context, index) {
         final activity = activities[index];
         final iconType = activity["icon"] ?? "info";
-        
+
         return Card(
           margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           elevation: 2,
@@ -196,7 +209,11 @@ class _ActivityLogState extends State<ActivityLog> {
               formatTime(activity["time"] ?? DateTime.now().toIso8601String()),
               style: TextStyle(fontSize: 12, color: Colors.grey[600]),
             ),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            trailing: const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: Colors.grey,
+            ),
           ),
         );
       },

@@ -1,3 +1,4 @@
+// Edit Details Screen
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/user_service.dart';
@@ -97,7 +98,7 @@ class _EditDetailsState extends State<EditDetails> {
   Future<void> _saveDetails() async {
     if (_formKey.currentState!.validate()) {
       setState(() => _isLoading = true);
-      
+
       try {
         final userId = _auth.currentUser?.uid;
         if (userId != null) {
@@ -129,7 +130,7 @@ class _EditDetailsState extends State<EditDetails> {
           );
         }
       }
-      
+
       setState(() => _isLoading = false);
     }
   }
