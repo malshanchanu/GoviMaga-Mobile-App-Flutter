@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -19,17 +20,13 @@ class _AIChatScreenState extends State<AIChatScreen> {
   
   List<Map<String, dynamic>> _messages = [];
   bool _isLoading = false;
-  GenerativeModel? _model;
-  ChatSession? _chatSession;
 
   @override
   void initState() {
     super.initState();
     _loadChatHistory(); 
-    _setupAI();
   }
 
-  // මතකයෙන් මැසේජ් ලෝඩ් කිරීම
   Future<void> _loadChatHistory() async {
     final prefs = await SharedPreferences.getInstance();
     final String? history = prefs.getString('chat_history');
@@ -87,19 +84,7 @@ class _AIChatScreenState extends State<AIChatScreen> {
     await prefs.setString('chat_history', jsonEncode(_messages));
   }
 
-  void _setupAI() {
-    final String apiKey = dotenv.env['GEMINI_API_KEY'] ?? "";
-    try {
-      _model = GenerativeModel(
-        model: 'gemini-2.5-flash', 
-        apiKey: apiKey,
-        systemInstruction: Content.system('You are GoviMaga Assistant. Respond in the language user asks.'),
-      );
-      _chatSession = _model!.startChat();
-    } catch (e) {
-      debugPrint("AI Setup Error: $e");
-    }
-  }
+
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -128,40 +113,90 @@ class _AIChatScreenState extends State<AIChatScreen> {
     _saveChatHistory();
 
     try {
-      if (_chatSession != null) {
-        GenerateContentResponse? response;
-        int retries = 3;
-        String lastError = '';
-        
-        while (retries > 0) {
-          try {
-            response = await _chatSession!.sendMessage(Content.text(userMessage));
+      final apiKey = dotenv.env['GROQ_API_KEY'];
+      if (apiKey == null || apiKey.isEmpty) {
+        throw Exception('GROQ_API_KEY is not set in .env file.');
+      }
+
+      // Build message history for Deepseek
+      List<Map<String, String>> apiMessages = [
+        {"role": "system", "content": "You are GoviMaga Assistant. Respond in the language user asks."}
+      ];
+
+      for (var msg in _messages) {
+        apiMessages.add({
+          "role": msg['isUser'] ? "user" : "assistant",
+          "content": msg['text']
+        });
+      }
+
+      int retries = 3;
+      String lastError = '';
+      http.Response? response;
+
+      while (retries > 0) {
+        try {
+          response = await http.post(
+            Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $apiKey',
+            },
+            body: jsonEncode({
+              "model": "llama-3.3-70b-versatile",
+              "messages": apiMessages,
+              "temperature": 0.7,
+            }),
+          ).timeout(const Duration(seconds: 30));
+
+          if (response.statusCode == 200) {
             break; // Success
-          } catch (e) {
-            lastError = e.toString();
-            if (lastError.contains('503') || 
-                lastError.contains('unavailable') || 
-                lastError.toLowerCase().contains('high demand')) {
-              retries--;
-              if (retries > 0) {
-                await Future.delayed(const Duration(seconds: 2));
-                continue; // Retry
-              }
+          } else if (response.statusCode == 429 || response.statusCode >= 500) {
+            lastError = 'Server busy (${response.statusCode}). Retrying...';
+            retries--;
+            if (retries > 0) {
+              await Future.delayed(const Duration(seconds: 2));
+              continue;
             }
-            throw e; // Not a 503 or out of retries
+          } else {
+            throw Exception('API Error: ${response.statusCode} - ${response.body}');
+          }
+        } on TimeoutException catch (_) {
+          lastError = 'Connection timeout. The server took too long to respond.';
+          retries--;
+          if (retries > 0) {
+            await Future.delayed(const Duration(seconds: 2));
+            continue;
+          }
+        } catch (e) {
+          lastError = e.toString();
+          if (lastError.contains('ClientException') || lastError.contains('SocketException')) {
+            retries--;
+            if (retries > 0) {
+              await Future.delayed(const Duration(seconds: 2));
+              continue;
+            }
+          } else if (retries == 3) {
+            throw e; // Non-retryable error immediately
           }
         }
-
-        final botResponse = response?.text ?? 'Error generating response';
-        
-        if (mounted) {
-          setState(() {
-            _messages.add({'text': botResponse, 'isUser': false});
-          });
-        }
-        
-        _speak(botResponse); 
       }
+
+      if (response == null || response.statusCode != 200) {
+        throw Exception(lastError.isNotEmpty ? lastError : 'Failed to connect to Groq API');
+      }
+
+      final responseData = jsonDecode(utf8.decode(response.bodyBytes));
+      final botResponse = responseData['choices'][0]['message']['content'] ?? 'Error generating response';
+
+      if (mounted) {
+        setState(() {
+          _messages.add({'text': botResponse, 'isUser': false});
+        });
+      }
+      
+      _speak(botResponse); 
+
     } catch (e) {
       if (mounted) {
         setState(() {

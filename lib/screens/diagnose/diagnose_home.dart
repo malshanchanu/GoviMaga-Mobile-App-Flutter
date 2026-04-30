@@ -337,7 +337,6 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
       GenerateContentResponse? response;
       String? lastError;
       
-      // Use the stable, fast model and retry on 503 errors
       int retries = 3;
       while (retries > 0) {
         try {
@@ -352,14 +351,17 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
           lastError = e.toString();
           if (lastError!.contains('503') || 
               lastError!.contains('unavailable') || 
-              lastError!.toLowerCase().contains('high demand')) {
+              lastError!.toLowerCase().contains('high demand') ||
+              lastError!.contains('ClientException') ||
+              lastError!.contains('SocketException') ||
+              lastError!.contains('connection abort')) {
             retries--;
             if (retries > 0) {
               await Future.delayed(const Duration(seconds: 2));
               continue; // Retry
             }
           }
-          break; // If it's not a 503 or we're out of retries, break out of the loop
+          break; // If it's not a retryable error or we're out of retries, break out of the loop
         }
       }
 
@@ -418,6 +420,8 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
         }
         await _saveDiagnoses();
         
+        // Silently fall back to local storage without showing confusing error messages
+        /*
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -426,6 +430,7 @@ class _DiseaseDiagnosisScreenState extends State<DiseaseDiagnosisScreen> {
             ),
           );
         }
+        */
       }
       
       if (mounted) setState(() => _isSaving = false);
